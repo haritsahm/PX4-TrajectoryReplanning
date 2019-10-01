@@ -1,0 +1,110 @@
+<gazebo>
+    <plugin name="sensor_d435" filename="librealsense_gazebo_plugin.so"/>
+</gazebo>
+
+<!-- Load parameters to model's main link-->
+<gazebo reference="camera_link">
+    <self_collide>0</self_collide>
+    <enable_wind>0</enable_wind>
+    <kinematic>0</kinematic>
+    <gravity>1</gravity>
+    <mu2>1</mu2>
+    <fdir1>0 0 0</fdir1>
+    <slip2>0</slip2>-->
+    <kp>1e+13</kp>
+    <kd>1</kd>
+    <!--<max_vel>0.01</max_vel>
+    <min_depth>0</min_depth>-->
+
+    <sensor name="color" type="camera">
+        <pose frame="">0 0.015 0 0 0 0</pose>
+        <camera name="sensor_d435">
+        <horizontal_fov>1.047</horizontal_fov>
+        <image>
+            <width>640</width>
+            <height>480</height>
+            <format>RGB_INT8</format>
+        </image>
+        <clip>
+            <near>0.1</near>
+            <far>100</far>
+        </clip>
+        <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <stddev>0.007</stddev>
+        </noise>
+        </camera>
+        <always_on>1</always_on>
+        <update_rate>60</update_rate>
+        <visualize>1</visualize>
+    </sensor>
+    <sensor name="ired1" type="camera">
+        <pose frame="">0 -0.050 0 0 0 0</pose>
+        <camera name="sensor_d435">
+        <horizontal_fov>1.047</horizontal_fov>
+        <image>
+            <width>640</width>
+            <height>480</height>
+            <format>L_INT8</format>
+        </image>
+        <clip>
+            <near>0.1</near>
+            <far>100</far>
+        </clip>
+        <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <stddev>0.05</stddev>
+        </noise>
+        </camera>
+        <always_on>1</always_on>
+        <update_rate>60</update_rate>
+        <visualize>0</visualize>
+    </sensor>
+    <sensor name="ired2" type="camera">
+        <pose frame="">0 0.01 0.004 0 0 0</pose>
+        <camera name="sensor_d435">
+        <horizontal_fov>1.047</horizontal_fov>
+        <image>
+            <width>640</width>
+            <height>480</height>
+            <format>L_INT8</format>
+        </image>
+        <clip>
+            <near>0.1</near>
+            <far>100</far>
+        </clip>
+        <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <stddev>0.05</stddev>
+        </noise>
+        </camera>
+        <always_on>1</always_on>
+        <update_rate>60</update_rate>
+        <visualize>0</visualize>
+    </sensor>
+    <sensor name="depth" type="depth">
+        <pose frame="">0 -0.03 0.004 0 0 0</pose>
+        <camera name="sensor_d435">
+        <horizontal_fov>1.047</horizontal_fov>
+        <image>
+                <width>640</width>
+                <height>480</height>
+        </image>
+        <clip>
+                <near>0.1</near>
+                <far>100</far>
+        </clip>
+        <noise>
+                <type>gaussian</type>
+                <mean>0.0</mean>
+                <stddev>0.100</stddev>
+        </noise>
+        </camera>
+        <always_on>1</always_on>
+        <update_rate>60</update_rate>
+        <visualize>0</visualize>
+    </sensor>
+</gazebo>
