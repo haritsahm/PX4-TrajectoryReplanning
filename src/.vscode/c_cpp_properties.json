@@ -1,0 +1,17 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "",
+        "limitSymbolsToIncludedHeaders": true
+      },
+      "includePath": [
+        "/home/haritsahm/Documents/codes/rgbd_local_map/devel/include/**",
+        "/opt/ros/melodic/include/**",
+        "/home/haritsahm/Documents/codes/rgbd_local_map/src/realsense-ros/realsense2_camera/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS"
+    }
+  ]
+}

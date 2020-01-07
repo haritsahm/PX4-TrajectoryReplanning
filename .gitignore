@@ -1,0 +1,8 @@
+build/
+devel/
+install/
+logs/
+src/CMakeLists.txt
+*.workspace
+*.workspace.*
+.vscode/
