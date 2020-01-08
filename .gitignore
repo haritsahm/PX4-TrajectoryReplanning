@@ -5,3 +5,4 @@ logs/
 src/CMakeLists.txt
 *.workspace
 *.workspace.*
+.vscode/
