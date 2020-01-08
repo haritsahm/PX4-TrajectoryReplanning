@@ -22,6 +22,8 @@ git rm src/realsense-ros
 git submodule add --recursive  https://github.com/PX4/sitl_gazebo.git src/sitl_gazebo 
 git submodule add --recursive https://github.com/PX4/Firmware.git src/px4
 git submodule add --recursive https://github.com/IntelRealSense/realsense-ros.git src/relsense-ros
+
+git submodule update --init --recursive
 ```
 
 ## 2. Installation Python3 Interpreter and PX4 
