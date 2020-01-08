@@ -1,0 +1,9 @@
+[submodule "src/px4"]
+	path = src/px4
+	url = https://github.com/PX4/Firmware.git
+[submodule "src/realsense-ros"]
+	path = src/realsense-ros
+	url = https://github.com/IntelRealSense/realsense-ros.git
+[submodule "src/sitl_gazebo"]
+	path = src/sitl_gazebo
+	url = https://github.com/PX4/sitl_gazebo.git
