@@ -1,9 +1,6 @@
 [submodule "src/realsense-ros"]
 	path = src/realsense-ros
 	url = https://github.com/IntelRealSense/realsense-ros.git
-[submodule "src/mavros_controllers"]
-	path = src/mavros_controllers
-	url = https://github.com/Jaeyoung-Lim/mavros_controllers
 [submodule "src/catkin_simple"]
 	path = src/catkin_simple
 	url = https://github.com/catkin/catkin_simple
@@ -16,3 +13,6 @@
 [submodule "src/ewok"]
 	path = src/ewok
 	url = https://github.com/VladyslavUsenko/ewok.git
+[submodule "src/mavros_controllers"]
+	path = src/mavros_controllers
+	url = https://github.com/Jaeyoung-Lim/mavros_controllers
