@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>local_planner</name>
+  <name>px4_trajectory_replanning</name>
   <version>0.0.0</version>
-  <description>The local_planner package</description>
+  <description>The px4_trajectory_replanning package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
@@ -27,7 +27,6 @@
   <!-- Example: -->
   <!-- <author email="jane.doe@example.com">Jane Doe</author> -->
 
-
   <!-- The *depend tags are used to specify dependencies -->
   <!-- Dependencies can be catkin packages or system dependencies -->
   <!-- Examples: -->
@@ -51,16 +50,23 @@
   <buildtool_depend>catkin</buildtool_depend>
   <buildtool_depend>catkin_simple</buildtool_depend>
 
+  <build_depend>roscpp</build_depend>
+
   <build_depend>geometry_msgs</build_depend>
   <build_depend>nav_msgs</build_depend>
-  <build_depend>octomap</build_depend>
-  <build_depend>octomap_msgs</build_depend>
-  <build_depend>roscpp</build_depend>
   <build_depend>std_msgs</build_depend>
-  <build_depend>trajectory_msgs</build_depend>
-  <build_depend>ewok_poly_spline</build_depend>
-  <build_depend>ewok_ring_buffer</build_depend>
 
+  <build_depend>rotors_control</build_depend>
+  <build_depend>ewok_poly_spline</build_depend>
+  <build_depend>ewok_optimization</build_depend>
+  <build_depend>ewok_ring_buffer</build_depend>
+  <build_depend>roslib</build_depend>
+  <build_depend>local_planner</build_depend>
+
+  <build_depend>tf</build_depend>
+  <build_depend>tf_conversions</build_depend>
+  <build_depend>eigen_conversions</build_depend>
+  <build_depend>cv_bridge</build_depend>
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
