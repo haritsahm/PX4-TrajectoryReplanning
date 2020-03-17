@@ -21,8 +21,7 @@
 #include <ros/ros.h>
 #include <mav_msgs/default_topics.h>
 
-#include "bspline_lee_position_controller_node.h"
-
+#include "px4_trajectory_replanning/bspline_lee_position_controller_node.h"
 #include "rotors_control/parameters_ros.h"
 
 namespace rotors_control {
@@ -154,27 +153,6 @@ void BSplineLeePositionControllerNode::OdometryCallback(const nav_msgs::Odometry
 
   lee_position_controller_.SetTrajectoryPoint(command_trajectory);
 
-  //ROS_INFO_STREAM("Segment time: " << time_since_segment_start);
-  //ROS_INFO_STREAM("Segment number: " << polynomial_segments_.front()->number());
-  //ROS_INFO_STREAM("Number of segments: " << polynomial_segments_.size());
-  //ROS_INFO_STREAM("Number of times: " << segment_start_times_.size());
-  //ROS_INFO_STREAM("Setting point: " << command_trajectory.position_W.transpose());
-
-
-  lee_position_controller_.SetOdometry(odometry);
-
-  Eigen::VectorXd ref_rotor_velocities;
-  lee_position_controller_.CalculateRotorVelocities(&ref_rotor_velocities);
-
-  // Todo(ffurrer): Do this in the conversions header.
-  mav_msgs::ActuatorsPtr actuator_msg(new mav_msgs::Actuators);
-
-  actuator_msg->angular_velocities.clear();
-  for (int i = 0; i < ref_rotor_velocities.size(); i++)
-    actuator_msg->angular_velocities.push_back(ref_rotor_velocities[i]);
-  actuator_msg->header.stamp = odometry_msg->header.stamp;
-
-  motor_velocity_reference_pub_.publish(actuator_msg);
 }
 
 void BSplineLeePositionControllerNode::getTrajectoryPoint(double t,

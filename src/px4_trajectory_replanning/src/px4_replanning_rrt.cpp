@@ -42,7 +42,7 @@
 #include <tf_conversions/tf_eigen.h>
 #include <tf/message_filter.h>
 #include <message_filters/subscriber.h>
-#include <trajectory_msgs/MultiDOFJointTrajectory.h>
+#include <px4_trajectory_replanning/command_protocol.h>
 
 #include <visualization_msgs/MarkerArray.h>
 #include <visualization_msgs/Marker.h>
@@ -52,18 +52,12 @@
 #include <ewok/uniform_bspline_3d.h>
 #include <ewok/rrtstar3d.h>
 
-#define bool2int (x ? 1 : 0)
-
-
 const int POW = 6;
 
 double dt ;
 int num_opt_points;
 
 bool initialized = false;
-
-std::ofstream f_time, opt_time;
-
 
 ewok::PolynomialTrajectory3D<10>::Ptr traj;
 ewok::EuclideanDistanceRingBuffer<POW>::Ptr edrb;
@@ -72,6 +66,11 @@ ewok::RRTStar3D<POW>::Ptr path_planner;
 ros::Publisher rrt_planner_pub, occ_marker_pub, free_marker_pub, dist_marker_pub, trajectory_pub, current_traj_pub, command_pt_pub, command_pt_viz_pub;
 tf::TransformListener * listener;
 
+bool CommandProtocol(px4_trajectory_replanning::command_protocol::Request &req,
+                     px4_trajectory_replanning::command_protocol::Response &res)
+{
+
+}
 
 void depthImageCallback(const sensor_msgs::Image::ConstPtr& msg)
 {

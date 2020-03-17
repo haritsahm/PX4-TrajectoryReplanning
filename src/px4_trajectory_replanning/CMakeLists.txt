@@ -32,10 +32,8 @@ catkin_simple()
 
 cs_add_executable(px4_replanning_rrt_node src/px4_replanning_rrt.cpp)
 cs_add_executable(px4_mavros_controller_node src/px4_mavros_controller.cpp)
+cs_add_executable(px4_position_controller_node src/px4_position_controller_node.cpp)
 cs_add_executable(px4_bspline_position_controller_node src/bspline_position_controller_node.cpp)
-
-target_link_libraries(px4_replanning_rrt_node ${CHOLMOD_LIBRARY} ${Eigen3_LIBS} nlopt Boost::thread)
-
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
@@ -43,6 +41,7 @@ target_link_libraries(px4_replanning_rrt_node ${CHOLMOD_LIBRARY} ${Eigen3_LIBS} 
 
 ## Specify libraries to link a library or executable target against
 target_link_libraries(px4_replanning_rrt_node ${CHOLMOD_LIBRARY} ${Eigen3_LIBS} nlopt Boost::thread Boost::chrono)
+target_link_libraries(px4_position_controller_node ${CHOLMOD_LIBRARY} Eigen3::Eigen nlopt Boost::thread Boost::chrono)
 
 cs_install()
 cs_export()

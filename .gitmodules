@@ -15,4 +15,4 @@
 	url = https://github.com/haritsahm/ewok.git
 [submodule "src/mavros_controllers"]
 	path = src/mavros_controllers
-	url = https://github.com/Jaeyoung-Lim/mavros_controllers
+	url = https://github.com/haritsahm/mavros_controllers.git
