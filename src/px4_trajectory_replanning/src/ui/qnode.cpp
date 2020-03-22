@@ -42,6 +42,9 @@ void QNode::run()
 
   while (ros::ok())
   {
+
+
+
     ros::spinOnce();
     loop_rate.sleep();
   }

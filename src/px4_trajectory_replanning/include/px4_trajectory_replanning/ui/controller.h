@@ -20,7 +20,7 @@ public:
 
 private:
   Ui::Controller *ui;
-  QNode *qnode_;
+  QNode qnode_;
 
 };
 

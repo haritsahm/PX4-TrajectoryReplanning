@@ -33,8 +33,8 @@ public:
             &LeePositionController::PointCallback, this);
 
 
-        odometry_sub_ = nh.subscribe("/mavros/local_position/odom", 1,
-                                     &LeePositionController::OdometryCallback, this);
+        position_sub_ = nh.subscribe("/mavros/local_position/pose", 1,
+                                     &LeePositionController::mavPosCallback, this);
 
         ros::NodeHandle pnh("~");
         pnh.param("dt", dt, 0.5);
@@ -48,6 +48,11 @@ public:
 
     }
 
+    inline Eigen::Vector3d toEigen(const geometry_msgs::Point& p) {
+      Eigen::Vector3d ev3(p.x, p.y, p.z);
+      return ev3;
+    }
+
     void PointCallback(const geometry_msgs::PointConstPtr & point_msg)
     {
         ROS_INFO("PointCallback: %d points in spline", b_spline_->size());
@@ -57,10 +62,49 @@ public:
         if(b_spline_->size() != 0) b_spline_->push_back(p);
     }
 
-    void OdometryCallback(const nav_msgs::OdometryConstPtr& odometry_msg)
+    void mavPosCallback(const geometry_msgs::PoseStamped& msg)
     {
-        odom_= *odometry_msg;
-        eigenOdometryFromMsg(odometry_msg, &odometry);
+      mavPos_ = toEigen(msg.pose.position);
+      mavAtt_.w() = msg.pose.orientation.w;
+      mavAtt_.x() = msg.pose.orientation.x;
+      mavAtt_.y() = msg.pose.orientation.y;
+      mavAtt_.z() = msg.pose.orientation.z;
+
+    }
+
+    void getTrajectoryPoint(double t,
+          mav_msgs::EigenTrajectoryPoint& command_trajectory, bool & yaw_from_traj) {
+
+
+      command_trajectory.position_W = b_spline_->evaluate(t, 0);
+      command_trajectory.velocity_W = b_spline_->evaluate(t, 1);
+      command_trajectory.acceleration_W = b_spline_->evaluate(t, 2);
+
+      static const double eps = 0.1;
+      static const double delta = 0.02;
+
+      Eigen::Vector3d d_t = b_spline_->evaluate(t + eps, 0) - command_trajectory.position_W;
+
+      yaw_from_traj = false;
+
+      if(std::abs(d_t[0]) > delta || std::abs(d_t[1]) > delta) {
+        double yaw = std::atan2(d_t[1], d_t[0]);
+        yaw_from_traj = true;
+
+        command_trajectory.setFromYaw(yaw);
+
+
+        Eigen::Vector3d d_t_e = b_spline_->evaluate(t + 2*eps, 0) - b_spline_->evaluate(t + eps, 0);
+
+        if(std::abs(d_t_e[0]) > delta || std::abs(d_t_e[1]) > delta) {
+          double yaw_e = std::atan2(d_t_e[1], d_t_e[0]);
+          double yaw_rate = (yaw_e - yaw) / eps;
+          command_trajectory.setFromYawRate(yaw_rate);
+        } else {
+          command_trajectory.setFromYawRate(0);
+        }
+
+      }
 
     }
 
@@ -73,9 +117,9 @@ public:
         while(ros::ok())
         {
             if(b_spline_->size() == 0) {
-              for(int i=0; i<6; i++) b_spline_->push_back(odometry.position);
+              for(int i=0; i<6; i++) b_spline_->push_back(mavPos_);
               init_time = ros::Time::now();
-              last_yaw = mav_msgs::yawFromQuaternion(odometry.orientation);
+              last_yaw = mav_msgs::yawFromQuaternion(mavAtt_);
             }
 
             if(time_elapsed > b_spline_->maxValidTime()) {
@@ -83,7 +127,23 @@ public:
               ROS_WARN("Adding last point once again!");
             }
 
+            bool yaw_from_traj;
+            mav_msgs::EigenTrajectoryPoint command_trajectory;
+            getTrajectoryPoint(time_elapsed, command_trajectory, yaw_from_traj);
 
+            if(!yaw_from_traj) {
+              command_trajectory.setFromYaw(last_yaw);
+              command_trajectory.setFromYawRate(0);
+            } else {
+              last_yaw = command_trajectory.getYaw();
+            }
+
+            Eigen::Vector3d target_pos = b_spline_->evaluate(time_elapsed, 0);
+            if(Eigen::Vector3d(target_pos - mavPos_).norm() < 0.5)
+            {
+              if(time_elapsed < b_spline_->maxValidTime())
+                time_elapsed += dt;
+            }
 
             ros::spinOnce();
             rate.sleep();
@@ -96,7 +156,7 @@ private:
 
     //subscribers
     ros::Subscriber cmd_poly_sub_;
-    ros::Subscriber odometry_sub_;
+    ros::Subscriber position_sub_;
 
     ros::NodeHandle nh_;
 
@@ -108,8 +168,12 @@ private:
     bool arrived;
 
     nav_msgs::Odometry odom_;
+    Eigen::Vector3d mavPos_, mavVel_, mavRate_;
+    Eigen::Quaterniond mavAtt_;
+
     Eigen::Affine3d pose_;
     EigenOdometry odometry;
+    Eigen::Vector3f offset_;
 
 //    void getTrajectoryPoint(double t,
 //              mav_msgs::EigenTrajectoryPoint& command_trajectory, bool & yaw_from_traj);

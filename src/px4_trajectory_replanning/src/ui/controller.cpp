@@ -2,11 +2,12 @@
 
 Controller::Controller(int argc, char** argv, QWidget *parent) :
   QWidget(parent),
+  qnode_(argc,argv),
   ui(new Ui::Controller)
 {
   ui->setupUi(this);
 
-  qnode_->init();
+  qnode_.init();
 
 }
 
