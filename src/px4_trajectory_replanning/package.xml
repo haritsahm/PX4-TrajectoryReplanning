@@ -58,6 +58,11 @@
   <build_depend>mavros</build_depend>
   <build_depend>mavros_msgs</build_depend>
   <build_depend>eigen_conversions</build_depend>
+  <build_depend>message_generation</build_depend>
+  <exec_depend>message_runtime</exec_depend>
+
+  <build_depend>geometric_controller</build_depend>
+  <build_depend>controller_msgs</build_depend>
 
   <build_depend>rotors_control</build_depend>
   <build_depend>ewok_poly_spline</build_depend>

@@ -1,0 +1,3 @@
+mavros_msgs/State    parameters
+---
+bool            result

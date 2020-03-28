@@ -42,7 +42,11 @@
 #include <tf_conversions/tf_eigen.h>
 #include <tf/message_filter.h>
 #include <message_filters/subscriber.h>
-#include <px4_trajectory_replanning/command_protocol.h>
+#include <px4_trajectory_replanning/SetMAV_MISSION_PARAM.h>
+#include <px4_trajectory_replanning/Configuration.h>
+#include <px4_trajectory_replanning/GetMAV_MISSION_PARAM.h>
+#include <px4_trajectory_replanning/MAV_MISSION_COMMAND.h>
+#include <yaml-cpp/yaml.h>
 
 #include <visualization_msgs/MarkerArray.h>
 #include <visualization_msgs/Marker.h>
@@ -52,10 +56,14 @@
 #include <ewok/uniform_bspline_3d.h>
 #include <ewok/rrtstar3d.h>
 
-const int POW = 6;
+enum MissionState{
+  MISSION_START = 0,
+  MISSION_STOP = 1,
+  MISSION_HOLD = 2
+};
 
+const int POW = 6;
 double dt ;
-int num_opt_points;
 
 bool initialized = false;
 
@@ -65,10 +73,72 @@ ewok::RRTStar3D<POW>::Ptr path_planner;
 
 ros::Publisher rrt_planner_pub, occ_marker_pub, free_marker_pub, dist_marker_pub, trajectory_pub, current_traj_pub, command_pt_pub, command_pt_viz_pub;
 tf::TransformListener * listener;
+px4_trajectory_replanning::Configuration config;
 
-bool CommandProtocol(px4_trajectory_replanning::command_protocol::Request &req,
-                     px4_trajectory_replanning::command_protocol::Response &res)
+MissionState mission_state = MISSION_HOLD;
+
+void loadParam(const std::string path);
+void saveParam();
+
+bool missionCommandParam(px4_trajectory_replanning::MAV_MISSION_COMMAND::Request &req,
+                     px4_trajectory_replanning::MAV_MISSION_COMMAND::Response &res)
 {
+  if(req.request_param)
+  {
+    res.response = true;
+    res.config = config;
+  }
+  else if (req.set_param)
+  {
+    if(!req.save)
+      config = req.config;
+    else {
+      saveParam();
+    }
+  }
+
+  return true;
+}
+
+void saveParam()
+{
+
+}
+
+void loadParam(const std::string path)
+{
+  YAML::Node node;
+
+  try
+  {
+      // load yaml
+      node = YAML::LoadFile(path.c_str());
+
+  } catch (const std::exception& e)
+  {
+      ROS_ERROR("Fail to load yaml file.");
+//      return;
+  }
+
+      YAML::Node node_pp = node["path_plnanning"];
+
+      config.max_velocity = node_pp["max_velocity"].as<int>();
+      config.max_acceleration = node_pp["max_acceleration"].as<double>();
+      config.resolution = node_pp["resolution"].as<double>();
+      config.num_opt_points = node_pp["num_opt_points"].as<double>();
+
+      config.step_size = node_pp["step_size"].as<double>();
+      config.rrt_factor = node_pp["rrt_factor"].as<double>();
+      config.max_solve_t = node_pp["max_solve_t"].as<double>();
+      config.uav_radius = node_pp["uav_radius"].as<double>();
+      config.num_iter = node_pp["num_iter"].as<double>();
+
+      config.num_pt_window = node_pp["num_pt_window"].as<double>();
+      config.clear_distance = node_pp["clear_distance"].as<double>();
+      config.max_check_dist = node_pp["max_check_dist"].as<double>();
+
+      YAML::Node node_g = node["global"];
+      dt = node_g["dt"].as<double>();
 
 }
 
@@ -190,9 +260,8 @@ int main(int argc, char** argv){
     ros::NodeHandle nh;
     ros::NodeHandle pnh("~");
 
-    std::string path = ros::package::getPath("ewok_simulation") + "/benchmarking/";
-
-    ROS_INFO_STREAM("path: " << path);
+    std::string config_path = ros::package::getPath("px4_trajectory_replanning")+"/config/config.yaml";
+    loadParam(config_path);
 
     listener = new tf::TransformListener;
 
@@ -207,6 +276,7 @@ int main(int argc, char** argv){
     ros::Publisher traj_marker_pub = nh.advertise<visualization_msgs::MarkerArray>("global_trajectory", 1, true);
     ros::Publisher traj_checker_pub = nh.advertise<visualization_msgs::Marker>("checker_trajectory", 1, true);
 
+    ros::ServiceServer mission_command_server = nh.advertiseService("controllers/mission_command_param", missionCommandParam);
 
     message_filters::Subscriber<sensor_msgs::Image> depth_image_sub_ ;
     depth_image_sub_.subscribe(nh, "camera/depth/image_raw", 5);
@@ -215,11 +285,7 @@ int main(int argc, char** argv){
     tf_filter_.registerCallback(depthImageCallback);
 
 
-    double max_velocity, max_acceleration;
-    pnh.param("max_velocity", max_velocity, 1.0);
-    pnh.param("max_acceleration", max_acceleration, 2.0);
-
-    Eigen::Vector4d limits(max_velocity, max_acceleration, 0, 0);
+    Eigen::Vector4d limits(config.max_velocity, config.max_acceleration, 0, 0);
 
     double start_x, start_y, start_z, start_yaw;
     pnh.param("start_x", start_x, 0.0);
@@ -239,16 +305,12 @@ int main(int argc, char** argv){
     pnh.param("stop_z", stop_z, 0.0);
     pnh.param("stop_yaw", stop_yaw, 0.0);
 
-
-    pnh.param("dt", dt, 0.5);
-    pnh.param("num_opt_points", num_opt_points, 7);
-
     ROS_INFO("Started hovering example with parameters: start - %f %f %f %f, middle - %f %f %f %f, stop - %f %f %f %f",
              start_x, start_y, start_z, start_yaw,
              middle_x, middle_y, middle_z, middle_yaw,
              stop_x, stop_y, stop_z, stop_yaw);
 
-    ROS_INFO("dt: %f, num_opt_points: %d", dt, num_opt_points);
+    ROS_INFO("dt: %f, num_opt_points: %d", dt, config.num_opt_points);
 
     visualization_msgs::Marker ctrl_pts_marker;
 
@@ -296,21 +358,17 @@ int main(int argc, char** argv){
     traj_marker_pub.publish(traj_marker);
     }
 
-
-    double resolution;
-    pnh.param("resolution", resolution, 0.15);
-
-    edrb.reset(new ewok::EuclideanDistanceRingBuffer<POW>(resolution, 1.0));
+    edrb.reset(new ewok::EuclideanDistanceRingBuffer<POW>(config.resolution, 1.0));
     ewok::UniformBSpline3D<6> spline_(dt);
 
-    path_planner.reset(new ewok::RRTStar3D<POW>(traj, 0.25, 1.65, 1, 6, dt));
+    path_planner.reset(new ewok::RRTStar3D<POW>(traj, config.step_size, config.rrt_factor, config.uav_radius, config.max_solve_t, dt));
     path_planner->setDistanceBuffer(edrb);
 
-    for (int i = 0; i < num_opt_points; i++) {
+    for (int i = 0; i < config.num_opt_points; i++) {
         path_planner->addControlPoint(Eigen::Vector3f(start_x, start_y, start_z));
     }
 
-    path_planner->setNumControlPointsOptimized(num_opt_points);
+    path_planner->setNumControlPointsOptimized(config.num_opt_points);
     path_planner->setHeight(Eigen::Vector3f(start_x, start_y, start_z));
 
     /**
@@ -386,10 +444,9 @@ int main(int argc, char** argv){
 
         tf::StampedTransform transform;
 
-
         try{
 
-            listener->lookupTransform("world", "firefly/base_link",
+            listener->lookupTransform("world", "mavros/base_link",
                                       ros::Time(0), transform);
         }
         catch (tf::TransformException &ex) {
@@ -404,7 +461,7 @@ int main(int argc, char** argv){
 
         if(current_time < traj->duration())
         {
-            std::vector<Eigen::Vector3d> ctrl_points = traj->evaluates(current_time, dt, 4, 0);
+            std::vector<Eigen::Vector3d> ctrl_points = traj->evaluates(current_time, dt, config.num_pt_window, 0);
             Eigen::Vector3d end_segment_point = traj->evaluateEndSegment(current_time, 0);
             std::vector<Eigen::Vector3f> ctrl_points_f;
             for(Eigen::Vector3d pt: ctrl_points)
@@ -412,7 +469,7 @@ int main(int argc, char** argv){
                 ctrl_points_f.push_back(pt.cast<float>());
             }
 
-            if(Eigen::Vector3f(base_link.translation().cast<float>() - ctrl_points_f[0]).norm() > 2.5)
+            if(Eigen::Vector3f(base_link.translation().cast<float>() - ctrl_points_f[0]).norm() > config.max_check_dist)
                 flag_holdSpline = true;
             else
                 flag_holdSpline = false;
@@ -421,7 +478,7 @@ int main(int argc, char** argv){
 
             if(edrb->insideVolume(ctrl_points_f))
             {
-                std::vector<bool> ctrl_pts_bool = edrb->isNearObstacle(ctrl_points_f, 1.2);
+                std::vector<bool> ctrl_pts_bool = edrb->isNearObstacle(ctrl_points_f, config.clear_distance);
 
                 for(int i =0; i < ctrl_pts_bool.size()-1; i++)
                 {
@@ -443,7 +500,7 @@ int main(int argc, char** argv){
                             pt_hold = start_point = point_prev;
                             path_planner->setStartPoint(point_prev);
                             path_planner->setTargetPoint(end_segment_point.cast<float>(), false);
-                            path_planner->findPath(5000);
+                            path_planner->findPath(config.num_iter);
 
                         }
                         else if(start_pt_found && path_planner->isRunnning())

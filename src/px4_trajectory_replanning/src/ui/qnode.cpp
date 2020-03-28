@@ -1,5 +1,7 @@
 #include "px4_trajectory_replanning/ui/qnode.h"
 
+using namespace px4_trajectory_replanning;
+
 QNode::QNode(int argc, char** argv)
   : init_argc_(argc),
     init_argv_(argv)
@@ -31,9 +33,160 @@ bool QNode::init()
 
   ros::NodeHandle ros_node;
 
+  get_mavstate_client = ros_node.serviceClient<px4_trajectory_replanning::GetMAV_STATE>(
+      "controllers/get_mavstate");
+  request_command_client = ros_node.serviceClient<px4_trajectory_replanning::MAV_CONTROLLER_COMMAND>(
+        "controllers/offboard_command");
+  mission_command_client = ros_node.serviceClient<px4_trajectory_replanning::MAV_MISSION_COMMAND>("controllers/mission_command");
+
+  px4_trajectory_replanning::MAV_MISSION_COMMAND mission_cmd;
+  mission_cmd.request.request_param = true;
+
+  mission_command_client.waitForExistence(ros::Duration(5));
+  if (mission_command_client.call(mission_cmd))
+  {
+    ROS_DEBUG_STREAM_COND(debug_, "CONTROLLER UI : Parameter Updated");
+    if(mission_cmd.response.response)
+      emit updateMissionParam(mission_cmd.response.config);
+  }
+  else
+    ROS_DEBUG_STREAM_COND(debug_, "CONTROLLER UI : Failed to call service Mission Command");
+
   start();
 
   return true;
+}
+
+void QNode::getParam()
+{
+    px4_trajectory_replanning::GetMAV_STATE srv;
+  if (get_mavstate_client.call(srv))
+  {
+    MavState state;
+    state.insert(std::pair<int,int>(STATE_OFFBOARD, BOOL2INT(srv.response.controller_state.offboard)));
+    state.insert(std::pair<int,int>(STATE_ROTOR, BOOL2INT(srv.response.controller_state.mav_state.armed)));
+    state.insert(std::pair<int,int>(STATE_TOL, srv.response.controller_state.tol_state));
+    emit updateUI(state);
+
+  }
+  else
+  {
+    ROS_ERROR("Failed to call service GetMavState");
+  }
+}
+
+void QNode::sendingControllerCommand(ReqControllerCMD req)
+{
+  px4_trajectory_replanning::MAV_CONTROLLER_COMMAND srv;
+
+  switch(req){
+  case REQ_CONTROLLER_LAND:
+  {
+    srv.request.mode_req = MAV_CONTROLLER_COMMAND::Request::PX4_CMD_LANDING;
+    break;
+  }
+
+  case REQ_CONTROLLER_TAKEOFF:
+  {
+    srv.request.mode_req = MAV_CONTROLLER_COMMAND::Request::PX4_CMD_TAKEOFF;
+
+    break;
+  }
+
+  case REQ_CONTROLLER_OFFBOARD:
+  {
+    srv.request.mode_req = MAV_CONTROLLER_COMMAND::Request::PX4_MODE_OFFBOARD;
+    break;
+  }
+
+  case REQ_CONTROLLER_ROTOR_ARMED:
+  {
+    srv.request.mode_req = MAV_CONTROLLER_COMMAND::Request::PX4_SET_ROTOR;
+    srv.request.set_rotor = true;
+    break;
+  }
+
+  case REQ_CONTROLLER_ROTOR_DISARMED:
+  {
+    srv.request.mode_req = MAV_CONTROLLER_COMMAND::Request::PX4_SET_ROTOR;
+    srv.request.set_rotor = false;
+    break;
+  }
+
+  case REQ_CONTROLLER_HOLD:
+  {
+    srv.request.mode_req = MAV_CONTROLLER_COMMAND::Request::PX4_SET_HOLD;
+    break;
+  }
+  case REQ_CONTROLLER_MISSION:
+  {
+    srv.request.mode_req = MAV_CONTROLLER_COMMAND::Request::PX4_SET_MISSION;
+    break;
+  }
+
+  }
+
+  if (request_command_client.call(srv))
+    ROS_INFO("REQUEST SENT");
+  else
+    ROS_ERROR("Failed to call service Request Command");
+
+}
+
+void QNode::sendingMissionCommand(Parameter param)
+{
+  px4_trajectory_replanning::MAV_MISSION_COMMAND srv;
+
+  switch (param.mission_req) {
+  case REQ_MISSION_START:
+  {
+    srv.request.mission_command = MAV_MISSION_COMMAND::Request::MAV_MISSION_START;
+    break;
+  }
+
+  case REQ_MISSION_STOP:
+  {
+    srv.request.mission_command = MAV_MISSION_COMMAND::Request::MAV_MISSION_STOP;
+    break;
+  }
+
+  case REQ_MISSION_HOLD:
+  {
+    srv.request.mission_command = MAV_MISSION_COMMAND::Request::MAV_MISSION_HOLD;
+    break;
+  }
+
+  case REQ_MISSION_GET_PARAM:
+  {
+    srv.request.request_param = true;
+    break;
+  }
+
+  case REQ_MISSION_SET_PARAM:
+  {
+    srv.request.set_param = true;
+    srv.request.save = false;
+    srv.request.config = param.config;
+    break;
+  }
+
+  case REQ_MISSION_SAVE_PARAM:
+  {
+    srv.request.set_param = true;
+    srv.request.save = true;
+   break;
+  }
+}
+
+
+  if (mission_command_client.call(srv))
+  {
+    ROS_DEBUG_STREAM_COND(debug_, "CONTROLLER UI : Mission Command Sent");
+    if(srv.response.response && param.mission_req == REQ_MISSION_GET_PARAM)
+      emit updateMissionParam(srv.response.config);
+  }
+  else
+    ROS_DEBUG_STREAM_COND(debug_, "CONTROLLER UI : Failed to call service Mission Command");
 }
 
 void QNode::run()
@@ -42,8 +195,7 @@ void QNode::run()
 
   while (ros::ok())
   {
-
-
+    getParam();
 
     ros::spinOnce();
     loop_rate.sleep();

@@ -1,0 +1,16 @@
+path_planning:
+  max_velocity: 1.0
+  max_acceleration: 2.0
+  resolution: 0.15
+  num_opt_points: 7
+  step_size: 0.5
+  rrt_factor: 1.5
+  max_solve_t: 1
+  uav_radius: 1.0
+  num_iter: 5000
+  num_pt_window: 4
+  clear_distance: 1.2
+  max_check_dist: 2.5
+
+global:
+  dt: 0.5

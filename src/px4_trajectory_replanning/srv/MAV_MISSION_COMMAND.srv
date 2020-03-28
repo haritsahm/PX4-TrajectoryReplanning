@@ -1,0 +1,19 @@
+# Constant Config
+uint8 MAV_MISSION_START = 0
+uint8 MAV_MISSION_STOP = 1
+uint8 MAV_MISSION_HOLD = 2
+
+# Mission Command
+uint8 mission_command
+
+# Set Parameter
+Configuration config
+bool save
+
+# Parameter
+bool request_param
+bool set_param
+---
+bool response
+Configuration config
+

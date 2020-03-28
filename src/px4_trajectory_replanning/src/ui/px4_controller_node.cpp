@@ -1,9 +1,10 @@
-#include <ros/ros.h>
+#include <px4_trajectory_replanning/ui/controller.h>
+#include <QApplication>
 
 int main(int argc, char **argv)
 {
-  ros::init(argc, argv, "px4_ui_controller_node");
-  ros::NodeHandle nh;
-
-  ROS_INFO("Hello world!");
+  QApplication app(argc, argv);
+  OffboardController controller(argc, argv);
+  controller.show();
+  return app.exec();
 }
