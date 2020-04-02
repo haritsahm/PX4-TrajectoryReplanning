@@ -6,6 +6,38 @@
 #include <nav_msgs/Odometry.h>
 #include <eigen3/Eigen/Eigen>
 
+enum TOLState{
+  TOL_STATE_LAND = 0,
+  TOL_STATE_TAKEOFF=1
+};
+
+// From UI to offboard controller
+enum OffbCMD {
+  TOL_CMD_LAND = 10,
+  TOL_CMD_TAKEOFF = 11,
+  TOL_CMD_OFFBOARD = 12,
+  TOL_CMD_ROTOR_ARM = 13,
+  TOL_CMD_HOLD = 14,
+  TOL_CMD_MISSION = 15
+};
+
+enum ControllerState{
+  CONTROLLER_STATE_LAND = 0,
+  CONTROLLER_STATE_TAKEOFF=1,
+  CONTROLLER_STATE_HOLD = 2,
+  CONTROLLER_STATE_MISSION_FOLLOW=3
+};
+
+// from offboard controller to position controller
+enum POSControllerCMD {
+  POS_CMD_LAND = 10,
+  POS_CMD_TAKEOFF = 11,
+  POS_CMD_HOLD = 12,
+  POS_CMD_MISSION_FOLLOW = 13,
+  POS_CMD_FOL_TRAJ = 14,
+  POS_CMD_NONE = 15
+};
+
 struct EigenOdometry {
   EigenOdometry()
       : position(0.0, 0.0, 0.0),

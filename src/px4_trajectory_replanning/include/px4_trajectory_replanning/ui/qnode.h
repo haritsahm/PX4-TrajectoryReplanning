@@ -15,6 +15,7 @@
 #include <px4_trajectory_replanning/SetMAV_MISSION_PARAM.h>
 #include <px4_trajectory_replanning/MAV_MISSION_COMMAND.h>
 #include <px4_trajectory_replanning/Configuration.h>
+#include <px4_trajectory_replanning/common.h>
 
 
 #endif
@@ -22,12 +23,13 @@
 #define BOOL2INT(x) (x ? 1 : 0)
 
 typedef std::map<int, int> MavState;
-enum TOLState{
-  TOL_STATE_LAND = 0,
-  TOL_STATE_TAKEOFF=1,
-  STATE_OFFBOARD = 40,
-  STATE_ROTOR = 41,
-  STATE_TOL = 42
+
+enum QTOLState{
+  QTOL_STATE_LAND = 40,
+  QTOL_STATE_TAKEOFF= 41,
+  QSTATE_OFFBOARD = 40,
+  QSTATE_ROTOR = 41,
+  QSTATE_TOL = 42
 };
 
 enum ReqControllerCMD{

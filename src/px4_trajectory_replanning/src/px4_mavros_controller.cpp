@@ -18,6 +18,7 @@
 #include <px4_trajectory_replanning/GetMAV_STATE.h>
 #include <px4_trajectory_replanning/GetPOS_CONTROLLER_STATE.h>
 #include <eigen3/Eigen/Eigen>
+#include <px4_trajectory_replanning/common.h>
 
 #include <iostream>
 #include <sstream>
@@ -26,22 +27,11 @@ mavros_msgs::State current_state;
 Eigen::Vector3d mavPos_;
 Eigen::Quaterniond mavAtt_;
 
-enum TOLState{TOL_STATE_LAND = 0, TOL_STATE_TAKEOFF=1};
-
-enum ControllerREQ {
-  TOL_REQ_LAND = 10,
-  TOL_REQ_TAKEOFF = 11,
-  TOL_CMD_OFFBOARD = 12,
-  TOL_CMD_ROTOR_ARM = 13,
-  TOL_CMD_HOLD_ALT = 14,
-  TOL_CMD_MISSION = 15
-};
-
-ControllerREQ controller_cmd;
+int controller_cmd;
 
 bool mode_offboard = false; bool req_offboard = false;
 bool armed = false;
-int tol_state = TOL_STATE_LAND; bool req_cmd_tol=false; int req_int_tol = 0;
+int tol_state = TOLState::TOL_STATE_LAND; bool req_cmd_tol=false; int req_int_tol = 0;
 bool cmd_takeoff = false; bool req_takeoff = false;
 bool cmd_land = true; bool req_land = false;
 bool rotor_state_req = false; bool req_rotor = false;
@@ -72,21 +62,8 @@ bool commandReqCallback(px4_trajectory_replanning::MAV_CONTROLLER_COMMAND::Reque
 {
   req_cmd_tol = true;
 
-  if(req.mode_req == req.PX4_CMD_LANDING)
-    controller_cmd = TOL_REQ_LAND;
-  else if(req.mode_req == req.PX4_CMD_TAKEOFF)
-    controller_cmd = TOL_REQ_TAKEOFF;
-  else if(req.mode_req == req.PX4_MODE_OFFBOARD)
-    controller_cmd = TOL_CMD_OFFBOARD;
-  else if(req.mode_req == req.PX4_SET_HOLD)
-    controller_cmd = TOL_CMD_HOLD_ALT;
-  else if(req.mode_req == req.PX4_SET_MISSION)
-    controller_cmd = TOL_CMD_MISSION;
-  else if(req.mode_req == req.PX4_SET_ROTOR)
-  {
-    controller_cmd = TOL_CMD_ROTOR_ARM;
-    rotor_state_req = req.set_rotor;
-  }
+  controller_cmd = req.mode_req;
+  rotor_state_req = req.set_rotor;
 
   res.success = true;
 
@@ -112,9 +89,6 @@ int main(int argc, char **argv)
       ("mavros/state", 10, state_cb);
   ros::Subscriber mavpos_sub = nh.subscribe("/mavros/local_position/pose", 1,
                                             mavpos_cb);
-
-  ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>
-      ("mavros/setpoint_position/local", 10);
 
   ros::ServiceClient arming_client = nh.serviceClient<mavros_msgs::CommandBool>
       ("mavros/cmd/arming");
@@ -153,7 +127,7 @@ int main(int argc, char **argv)
     if(req_cmd_tol)
     {
       switch (controller_cmd) {
-      case TOL_CMD_OFFBOARD:
+      case OffbCMD::TOL_CMD_OFFBOARD:
       {
         mavros_msgs::SetMode offb_set_mode;
         offb_set_mode.request.custom_mode = "OFFBOARD";
@@ -173,12 +147,12 @@ int main(int argc, char **argv)
         break;
       }
 
-      case TOL_REQ_TAKEOFF:
+      case OffbCMD::TOL_CMD_TAKEOFF:
       {
         px4_trajectory_replanning::POS_CONTROLLER_COMMAND pos_cmd_srv;
         if(pos_controller_state.controller_ready)
         {
-          pos_cmd_srv.request.cmd_req = pos_cmd_srv.request.CMD_TAKEOFF;
+          pos_cmd_srv.request.cmd_req = POSControllerCMD::POS_CMD_TAKEOFF;
           if(pos_controller_cmd_client.call(pos_cmd_srv))
             ROS_DEBUG_STREAM_COND(debug, "MAVROS CONTROLLER : Request TOL to Takeoff");
           else
@@ -189,12 +163,12 @@ int main(int argc, char **argv)
         break;
       }
 
-      case TOL_REQ_LAND:
+      case OffbCMD::TOL_CMD_LAND:
       {
         px4_trajectory_replanning::POS_CONTROLLER_COMMAND pos_cmd_srv;
         if(pos_controller_state.controller_ready)
         {
-          pos_cmd_srv.request.cmd_req = pos_cmd_srv.request.CMD_LANDING;
+          pos_cmd_srv.request.cmd_req = POSControllerCMD::POS_CMD_LAND;
           if(pos_controller_cmd_client.call(pos_cmd_srv))
             ROS_DEBUG_STREAM_COND(debug, "MAVROS CONTROLLER : Request TOL to Land");
           else
@@ -205,7 +179,7 @@ int main(int argc, char **argv)
         break;
       }
 
-      case TOL_CMD_ROTOR_ARM:
+      case OffbCMD::TOL_CMD_ROTOR_ARM:
       {
         ROS_DEBUG_STREAM_COND(debug, "MAVROS CONTROLLER : Request ROTOR" << std::boolalpha << rotor_state_req);
         mavros_msgs::CommandBool arm_cmd;
@@ -222,12 +196,12 @@ int main(int argc, char **argv)
         break;
       }
 
-      case TOL_CMD_HOLD_ALT:
+      case OffbCMD::TOL_CMD_HOLD:
       {
         px4_trajectory_replanning::POS_CONTROLLER_COMMAND pos_cmd_srv;
         if(pos_controller_state.controller_ready)
         {
-          pos_cmd_srv.request.cmd_req = pos_cmd_srv.request.CMD_HOLD_ALT;
+          pos_cmd_srv.request.cmd_req = POSControllerCMD::POS_CMD_HOLD;
           if(pos_controller_cmd_client.call(pos_cmd_srv))
             ROS_DEBUG_STREAM_COND(debug, "MAVROS CONTROLLER : Request TOL to Hold Alt");
           else
@@ -238,12 +212,12 @@ int main(int argc, char **argv)
         break;
       }
 
-      case TOL_CMD_MISSION:
+      case OffbCMD::TOL_CMD_MISSION:
       {
         px4_trajectory_replanning::POS_CONTROLLER_COMMAND pos_cmd_srv;
         if(pos_controller_state.controller_ready)
         {
-          pos_cmd_srv.request.cmd_req = pos_cmd_srv.request.CMD_MISSION_FOLLOW;
+          pos_cmd_srv.request.cmd_req = POSControllerCMD::POS_CMD_MISSION_FOLLOW;
           if(pos_controller_cmd_client.call(pos_cmd_srv))
             ROS_DEBUG_STREAM_COND(debug, "MAVROS CONTROLLER : Request TOL to Follow Mission");
           else
@@ -253,6 +227,9 @@ int main(int argc, char **argv)
           ROS_WARN_COND(debug, "MAVROS CONTROLLER : POS Controller Not Ready");
         break;
       }
+
+      default:
+        break;
 
       }
 

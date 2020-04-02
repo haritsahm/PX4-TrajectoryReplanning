@@ -63,9 +63,9 @@ void QNode::getParam()
   if (get_mavstate_client.call(srv))
   {
     MavState state;
-    state.insert(std::pair<int,int>(STATE_OFFBOARD, BOOL2INT(srv.response.controller_state.offboard)));
-    state.insert(std::pair<int,int>(STATE_ROTOR, BOOL2INT(srv.response.controller_state.mav_state.armed)));
-    state.insert(std::pair<int,int>(STATE_TOL, srv.response.controller_state.tol_state));
+    state.insert(std::pair<int,int>(QTOLState::QSTATE_OFFBOARD, BOOL2INT(srv.response.controller_state.offboard)));
+    state.insert(std::pair<int,int>(QTOLState::QSTATE_ROTOR, BOOL2INT(srv.response.controller_state.mav_state.armed)));
+    state.insert(std::pair<int,int>(QTOLState::QSTATE_TOL, srv.response.controller_state.tol_state));
     emit updateUI(state);
 
   }
@@ -82,45 +82,45 @@ void QNode::sendingControllerCommand(ReqControllerCMD req)
   switch(req){
   case REQ_CONTROLLER_LAND:
   {
-    srv.request.mode_req = MAV_CONTROLLER_COMMAND::Request::PX4_CMD_LANDING;
+    srv.request.mode_req = OffbCMD::TOL_CMD_LAND;
     break;
   }
 
   case REQ_CONTROLLER_TAKEOFF:
   {
-    srv.request.mode_req = MAV_CONTROLLER_COMMAND::Request::PX4_CMD_TAKEOFF;
+    srv.request.mode_req = OffbCMD::TOL_CMD_TAKEOFF;
 
     break;
   }
 
   case REQ_CONTROLLER_OFFBOARD:
   {
-    srv.request.mode_req = MAV_CONTROLLER_COMMAND::Request::PX4_MODE_OFFBOARD;
+    srv.request.mode_req = OffbCMD::TOL_CMD_OFFBOARD;
     break;
   }
 
   case REQ_CONTROLLER_ROTOR_ARMED:
   {
-    srv.request.mode_req = MAV_CONTROLLER_COMMAND::Request::PX4_SET_ROTOR;
+    srv.request.mode_req = OffbCMD::TOL_CMD_ROTOR_ARM;
     srv.request.set_rotor = true;
     break;
   }
 
   case REQ_CONTROLLER_ROTOR_DISARMED:
   {
-    srv.request.mode_req = MAV_CONTROLLER_COMMAND::Request::PX4_SET_ROTOR;
+    srv.request.mode_req = OffbCMD::TOL_CMD_ROTOR_ARM;
     srv.request.set_rotor = false;
     break;
   }
 
   case REQ_CONTROLLER_HOLD:
   {
-    srv.request.mode_req = MAV_CONTROLLER_COMMAND::Request::PX4_SET_HOLD;
+    srv.request.mode_req =  OffbCMD::TOL_CMD_HOLD;
     break;
   }
   case REQ_CONTROLLER_MISSION:
   {
-    srv.request.mode_req = MAV_CONTROLLER_COMMAND::Request::PX4_SET_MISSION;
+    srv.request.mode_req =  OffbCMD::TOL_CMD_MISSION;
     break;
   }
 

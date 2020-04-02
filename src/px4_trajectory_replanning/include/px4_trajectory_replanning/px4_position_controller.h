@@ -26,18 +26,10 @@
 using namespace ewok;
 using namespace tf;
 
-enum ControllerState{
-  CONTROLLER_STATE_LAND = 0,
-  CONTROLLER_STATE_TAKEOFF=1,
-  CONTROLLER_STATE_HOLD = 2,
-  CONTROLLER_STATE_MISSION_FOLLOW=3
-};
-
-enum ControllerCMD {
-  TOL_CMD_LAND = 10,
-  TOL_CMD_TAKEOFF = 11,
-  TOL_CMD_HOLD = 12,
-  TOL_CMD_MISSION_FOLLOW = 13
+enum TrajType {
+  TRAJ_TAKEOFF = 21,
+  TRAJ_LAND = 22,
+  TRAJ_MISSION = 23
 };
 
 class LeePositionController
@@ -54,7 +46,8 @@ public:
     void mavPosCallback(const geometry_msgs::PoseStamped& msg);
 
     void pubrefState();
-    void generateTraj(Eigen::Vector3d init, Eigen::Vector3d tar, Eigen::Vector4d limit);
+    void followTraj();
+    void generateTraj(Eigen::Vector3d start, Eigen::Vector3d tar, Eigen::Vector4d limit);
     void getTrajectoryPoint(double t, mav_msgs::EigenTrajectoryPoint& command_trajectory, bool & yaw_from_traj);
 
     void followBSpline();
@@ -82,7 +75,7 @@ private:
     bool arrived;
     int controller_state; bool controller_ready;
 
-    ControllerCMD controller_cmd; bool req_cmd_tol=false;
+    int controller_cmd; bool req_cmd_tol=false;
     bool request_hold = false;
 
     nav_msgs::Odometry odom_;
@@ -95,6 +88,8 @@ private:
     Eigen::Vector3f offset_;
 
     ewok::PolynomialTrajectory3D<10>::Ptr traj;
+    Eigen::Vector3d traj_tar;
+    TrajType traj_type;
 
 
 };

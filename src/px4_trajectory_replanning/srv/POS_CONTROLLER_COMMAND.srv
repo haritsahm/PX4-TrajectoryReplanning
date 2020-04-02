@@ -1,8 +1,4 @@
-uint8 CMD_TAKEOFF = 10
-uint8 CMD_LANDING = 11
-uint8 CMD_HOLD_ALT = 12
-uint8 CMD_MISSION_FOLLOW = 13
-
+# from POSControllerCMD
 uint8 cmd_req
 ---
 bool success

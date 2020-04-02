@@ -24,9 +24,12 @@ LeePositionController::LeePositionController(ros::NodeHandle &nh):
 
   b_spline_.reset(new ewok::UniformBSpline3D<6, double>(dt));
   time_elapsed = 0;
-  controller_cmd = TOL_CMD_LAND;
-  controller_state = CONTROLLER_STATE_LAND;
+  controller_cmd = POSControllerCMD::POS_CMD_NONE;
+  controller_state = ControllerState::CONTROLLER_STATE_LAND;
   controller_ready = false;
+  request_hold = true;
+
+  p_targ = v_targ = a_targ = Eigen::Vector3d::Zero();
 
   spin();
 
@@ -40,24 +43,14 @@ inline Eigen::Vector3d LeePositionController::toEigen(const geometry_msgs::Point
 bool LeePositionController::commandCallback(px4_trajectory_replanning::POS_CONTROLLER_COMMAND::Request  &req,
                                             px4_trajectory_replanning::POS_CONTROLLER_COMMAND::Response &res)
 {
-  ROS_INFO("POSITION CONTROLLER : Incoming Command");
-
   req_cmd_tol = true;
+  ROS_INFO_STREAM("Incoming Command " << req.cmd_req);
+  controller_cmd = req.cmd_req;
 
-  if(req.cmd_req == req.CMD_HOLD_ALT)
+  if(req.cmd_req == POSControllerCMD::POS_CMD_HOLD)
     request_hold = true;
   else
     request_hold = false;
-
-
-  if(req.cmd_req == req.CMD_LANDING)
-    controller_cmd = TOL_CMD_LAND;
-  else if(req.cmd_req == req.CMD_TAKEOFF)
-    controller_cmd = TOL_CMD_TAKEOFF;
-  else if(req.cmd_req == req.CMD_HOLD_ALT)
-    controller_cmd = TOL_CMD_HOLD;
-  else if(req.cmd_req == req.CMD_MISSION_FOLLOW)
-    controller_cmd = TOL_CMD_MISSION_FOLLOW;
 
   return true;
 }
@@ -113,19 +106,34 @@ void LeePositionController::pubrefState(){
   referencePub_.publish(msg);
 }
 
-void LeePositionController::generateTraj(Eigen::Vector3d init, Eigen::Vector3d tar, Eigen::Vector4d limits)
+void LeePositionController::followTraj()
 {
-  Eigen::Vector3d start_point(-5, -5, 1), middle_point(2,0,1), end_point(5, 5, 1);
+  p_targ = traj->evaluate(time_elapsed, 0);
+  v_targ = traj->evaluate(time_elapsed, 1);
+  a_targ = traj->evaluate(time_elapsed, 2);
+
+  Eigen::Vector3d target_pos = traj->evaluate(time_elapsed, 0);
+  if(Eigen::Vector3d(target_pos - mavPos_).norm() < 0.2)
+  {
+    if(time_elapsed < traj->duration())
+      time_elapsed += dt;
+  }
+}
+
+void LeePositionController::generateTraj(Eigen::Vector3d start, Eigen::Vector3d tar, Eigen::Vector4d limits)
+{
+  Eigen::Vector3d mid_point = (start + tar)/2;
+
+  traj_tar = tar;
 
   ewok::Polynomial3DOptimization<10> po(limits);
 
   typename ewok::Polynomial3DOptimization<10>::Vector3Array vec;
-  vec.push_back(start_point);
-  vec.push_back(middle_point);
-  vec.push_back(end_point);
+  vec.push_back(start);
+  vec.push_back(mid_point);
+  vec.push_back(tar);
 
-  auto traj = po.computeTrajectory(vec);
-
+  traj = po.computeTrajectory(vec);
 }
 
 void LeePositionController::getTrajectoryPoint(double t,
@@ -194,6 +202,7 @@ void LeePositionController::followBSpline()
     if(time_elapsed < b_spline_->maxValidTime())
       time_elapsed += dt;
   }
+
 }
 
 void LeePositionController::spin()
@@ -201,30 +210,47 @@ void LeePositionController::spin()
   ros::Rate rate(100);
   controller_ready = true;
 
-  ROS_INFO("POSITION CONTROLLRE RUNNIGN");
-
   while(ros::ok())
   {
     switch (controller_cmd) {
-    case TOL_CMD_LAND:
+    case POSControllerCMD::POS_CMD_LAND:
     {
-      p_targ = Eigen::Vector3d::Zero();
-      v_targ = Eigen::Vector3d(0, 0, 0.01);
-      a_targ = Eigen::Vector3d(0, 0, 0.01);
-      controller_state = CONTROLLER_STATE_LAND;
+      generateTraj(mavPos_, Eigen::Vector3d(mavPos_.x(),mavPos_.y(), -0.1), Eigen::Vector4d(0.2, 0.2, 0, 0));
+      time_elapsed = 0;
+      traj_type = TRAJ_LAND;
+      controller_cmd = POSControllerCMD::POS_CMD_FOL_TRAJ;
       break;
     }
 
-    case TOL_CMD_TAKEOFF:
+    case POSControllerCMD::POS_CMD_TAKEOFF:
     {
-      p_targ = Eigen::Vector3d(0,0,2);
-      v_targ = Eigen::Vector3d(0,0, 0.01);
-      a_targ = Eigen::Vector3d(0, 0, 0.01);
-      controller_state = CONTROLLER_STATE_TAKEOFF;
+      generateTraj(mavPos_, Eigen::Vector3d(mavPos_.x(),mavPos_.y(),2), Eigen::Vector4d(0.2, 0.2, 0, 0));
+      time_elapsed = 0;
+      traj_type = TRAJ_TAKEOFF;
+      controller_cmd = POSControllerCMD::POS_CMD_FOL_TRAJ;
       break;
     }
 
-    case TOL_CMD_HOLD:
+    case POSControllerCMD::POS_CMD_FOL_TRAJ:
+    {
+      if(traj_type == TRAJ_MISSION)
+      {
+        followBSpline();
+      }
+
+      else {
+        followTraj();
+        double dist = Eigen::Vector3d(traj_tar-mavPos_).norm();
+        if(dist < 0.2)
+        {
+          request_hold = true;
+          controller_cmd = POSControllerCMD::POS_CMD_HOLD;
+        }
+      }
+      break;
+    }
+
+    case POSControllerCMD::POS_CMD_HOLD:
     {
       p_targ = lastPos_;
       v_targ = Eigen::Vector3d::Zero();
@@ -233,15 +259,24 @@ void LeePositionController::spin()
       break;
     }
 
-    case TOL_CMD_MISSION_FOLLOW:
+    case POSControllerCMD::POS_CMD_MISSION_FOLLOW:
     {
-      followBSpline();
+      time_elapsed = 0;
+      traj_type = TRAJ_MISSION;
+      controller_cmd = POSControllerCMD::POS_CMD_FOL_TRAJ;
       controller_state = CONTROLLER_STATE_MISSION_FOLLOW;
       break;
     }
+
+    case POSControllerCMD::POS_CMD_NONE:
+    {
+      break;
+    }
+
     }
 
     pubrefState(); //publish to geometric controller
+
 
     ros::spinOnce();
     rate.sleep();

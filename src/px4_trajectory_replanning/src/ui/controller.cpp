@@ -46,7 +46,7 @@ OffboardController::~OffboardController()
 void OffboardController::setMavState(MavState state)
 {
       for (MavState::iterator itr = state.begin(); itr != state.end(); ++itr) {
-        if(itr->first == STATE_OFFBOARD)
+        if(itr->first == QTOLState::QSTATE_OFFBOARD)
         {
           if (itr->second == 0)
           {
@@ -60,7 +60,7 @@ void OffboardController::setMavState(MavState state)
           }
 
         }
-        else if(itr->first == STATE_ROTOR)
+        else if(itr->first == QTOLState::QSTATE_ROTOR)
         {
           if (itr->second == 0)
           {
@@ -76,7 +76,7 @@ void OffboardController::setMavState(MavState state)
           }
         }
 
-        else if(itr->first == STATE_TOL)
+        else if(itr->first == QTOLState::QSTATE_TOL)
         {
           if(itr->second == TOL_STATE_LAND)
           {
