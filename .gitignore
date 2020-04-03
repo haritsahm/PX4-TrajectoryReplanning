@@ -6,3 +6,4 @@ src/CMakeLists.txt
 *.workspace
 *.workspace.*
 .vscode/
+.catkin_tools/
