@@ -1,6 +1,0 @@
-ewok/catkin_simple
-/home/haritsahm/Documents/codes/rgbd_local_map/devel/.private/catkin_simple/cmake.lock /home/haritsahm/Documents/codes/rgbd_local_map/devel/./cmake.lock
-/home/haritsahm/Documents/codes/rgbd_local_map/devel/.private/catkin_simple/share/catkin_simple/cmake/catkin_simple-extras.cmake /home/haritsahm/Documents/codes/rgbd_local_map/devel/share/catkin_simple/cmake/catkin_simple-extras.cmake
-/home/haritsahm/Documents/codes/rgbd_local_map/devel/.private/catkin_simple/share/catkin_simple/cmake/catkin_simpleConfig.cmake /home/haritsahm/Documents/codes/rgbd_local_map/devel/share/catkin_simple/cmake/catkin_simpleConfig.cmake
-/home/haritsahm/Documents/codes/rgbd_local_map/devel/.private/catkin_simple/share/catkin_simple/cmake/catkin_simpleConfig-version.cmake /home/haritsahm/Documents/codes/rgbd_local_map/devel/share/catkin_simple/cmake/catkin_simpleConfig-version.cmake
-/home/haritsahm/Documents/codes/rgbd_local_map/devel/.private/catkin_simple/lib/pkgconfig/catkin_simple.pc /home/haritsahm/Documents/codes/rgbd_local_map/devel/lib/pkgconfig/catkin_simple.pc

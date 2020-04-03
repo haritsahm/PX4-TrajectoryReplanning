@@ -1,8 +1,0 @@
-ewok/rotors_simulator/rotors_gazebo
-/home/haritsahm/Documents/codes/rgbd_local_map/devel/.private/rotors_gazebo/cmake.lock /home/haritsahm/Documents/codes/rgbd_local_map/devel/./cmake.lock
-/home/haritsahm/Documents/codes/rgbd_local_map/devel/.private/rotors_gazebo/share/rotors_gazebo/cmake/rotors_gazeboConfig-version.cmake /home/haritsahm/Documents/codes/rgbd_local_map/devel/share/rotors_gazebo/cmake/rotors_gazeboConfig-version.cmake
-/home/haritsahm/Documents/codes/rgbd_local_map/devel/.private/rotors_gazebo/share/rotors_gazebo/cmake/rotors_gazeboConfig.cmake /home/haritsahm/Documents/codes/rgbd_local_map/devel/share/rotors_gazebo/cmake/rotors_gazeboConfig.cmake
-/home/haritsahm/Documents/codes/rgbd_local_map/devel/.private/rotors_gazebo/lib/rotors_gazebo/hovering_example /home/haritsahm/Documents/codes/rgbd_local_map/devel/lib/rotors_gazebo/hovering_example
-/home/haritsahm/Documents/codes/rgbd_local_map/devel/.private/rotors_gazebo/lib/rotors_gazebo/waypoint_publisher /home/haritsahm/Documents/codes/rgbd_local_map/devel/lib/rotors_gazebo/waypoint_publisher
-/home/haritsahm/Documents/codes/rgbd_local_map/devel/.private/rotors_gazebo/lib/rotors_gazebo/waypoint_publisher_file /home/haritsahm/Documents/codes/rgbd_local_map/devel/lib/rotors_gazebo/waypoint_publisher_file
-/home/haritsahm/Documents/codes/rgbd_local_map/devel/.private/rotors_gazebo/lib/pkgconfig/rotors_gazebo.pc /home/haritsahm/Documents/codes/rgbd_local_map/devel/lib/pkgconfig/rotors_gazebo.pc

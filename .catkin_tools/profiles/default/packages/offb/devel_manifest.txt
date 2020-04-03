@@ -1,6 +1,0 @@
-offb
-/home/haritsahm/Documents/codes/rgbd_local_map/devel/.private/offb/cmake.lock /home/haritsahm/Documents/codes/rgbd_local_map/devel/./cmake.lock
-/home/haritsahm/Documents/codes/rgbd_local_map/devel/.private/offb/share/offb/cmake/offbConfig-version.cmake /home/haritsahm/Documents/codes/rgbd_local_map/devel/share/offb/cmake/offbConfig-version.cmake
-/home/haritsahm/Documents/codes/rgbd_local_map/devel/.private/offb/share/offb/cmake/offbConfig.cmake /home/haritsahm/Documents/codes/rgbd_local_map/devel/share/offb/cmake/offbConfig.cmake
-/home/haritsahm/Documents/codes/rgbd_local_map/devel/.private/offb/lib/offb/offb_node /home/haritsahm/Documents/codes/rgbd_local_map/devel/lib/offb/offb_node
-/home/haritsahm/Documents/codes/rgbd_local_map/devel/.private/offb/lib/pkgconfig/offb.pc /home/haritsahm/Documents/codes/rgbd_local_map/devel/lib/pkgconfig/offb.pc
