@@ -16,3 +16,6 @@
 [submodule "src/mavros_controllers"]
 	path = src/mavros_controllers
 	url = https://github.com/haritsahm/mavros_controllers.git
+[submodule "src/px4"]
+	path = src/px4
+	url = https://github.com/haritsahm/Firmware.git

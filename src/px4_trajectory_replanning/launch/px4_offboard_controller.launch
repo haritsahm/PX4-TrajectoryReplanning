@@ -17,4 +17,7 @@
     <node pkg="px4_trajectory_replanning" type="px4_mavros_controller_node" name="px4_mavros_controller_node" output="screen" />
     <node pkg="px4_trajectory_replanning" type="px4_position_controller_node" name="px4_position_controller_node" output="screen" />
 
+    <!-- <include file="$(find px4_trajectory_replanning)/launch/trajectory_replanning_rrt.launch"> -->
+
+
 </launch>

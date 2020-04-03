@@ -43,9 +43,7 @@
 #include <tf/message_filter.h>
 #include <sensor_msgs/CameraInfo.h>
 #include <message_filters/subscriber.h>
-#include <px4_trajectory_replanning/SetMAV_MISSION_PARAM.h>
 #include <px4_trajectory_replanning/Configuration.h>
-#include <px4_trajectory_replanning/GetMAV_MISSION_PARAM.h>
 #include <px4_trajectory_replanning/MAV_MISSION_COMMAND.h>
 #include <yaml-cpp/yaml.h>
 

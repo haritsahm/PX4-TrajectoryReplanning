@@ -11,8 +11,6 @@
 #include <ros/package.h>
 #include <px4_trajectory_replanning/GetMAV_STATE.h>
 #include <px4_trajectory_replanning/MAV_CONTROLLER_COMMAND.h>
-#include <px4_trajectory_replanning/GetMAV_MISSION_PARAM.h>
-#include <px4_trajectory_replanning/SetMAV_MISSION_PARAM.h>
 #include <px4_trajectory_replanning/MAV_MISSION_COMMAND.h>
 #include <px4_trajectory_replanning/Configuration.h>
 #include <px4_trajectory_replanning/common.h>

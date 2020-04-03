@@ -1,0 +1,3 @@
+/home/haritsahm/Documents/codes/rgbd_local_map/devel/./cmake.lock 222
+/home/haritsahm/Documents/codes/rgbd_local_map/devel/lib/libLiftDragPlugin.so 5
+/home/haritsahm/Documents/codes/rgbd_local_map/devel/lib/libgazebo_geotagged_images_plugin.so 5

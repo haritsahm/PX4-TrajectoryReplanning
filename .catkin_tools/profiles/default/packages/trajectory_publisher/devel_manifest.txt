@@ -1,0 +1,6 @@
+mavros_controllers/trajectory_publisher
+/home/haritsahm/Documents/codes/rgbd_local_map/devel/.private/trajectory_publisher/cmake.lock /home/haritsahm/Documents/codes/rgbd_local_map/devel/./cmake.lock
+/home/haritsahm/Documents/codes/rgbd_local_map/devel/.private/trajectory_publisher/share/trajectory_publisher/cmake/trajectory_publisherConfig-version.cmake /home/haritsahm/Documents/codes/rgbd_local_map/devel/share/trajectory_publisher/cmake/trajectory_publisherConfig-version.cmake
+/home/haritsahm/Documents/codes/rgbd_local_map/devel/.private/trajectory_publisher/share/trajectory_publisher/cmake/trajectory_publisherConfig.cmake /home/haritsahm/Documents/codes/rgbd_local_map/devel/share/trajectory_publisher/cmake/trajectory_publisherConfig.cmake
+/home/haritsahm/Documents/codes/rgbd_local_map/devel/.private/trajectory_publisher/lib/trajectory_publisher/trajectory_publisher /home/haritsahm/Documents/codes/rgbd_local_map/devel/lib/trajectory_publisher/trajectory_publisher
+/home/haritsahm/Documents/codes/rgbd_local_map/devel/.private/trajectory_publisher/lib/pkgconfig/trajectory_publisher.pc /home/haritsahm/Documents/codes/rgbd_local_map/devel/lib/pkgconfig/trajectory_publisher.pc
