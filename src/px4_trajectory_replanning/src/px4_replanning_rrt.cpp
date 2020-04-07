@@ -73,8 +73,11 @@ ewok::RRTStar3D<POW>::Ptr path_planner;
 ros::Publisher rrt_planner_pub, occ_marker_pub, free_marker_pub, dist_marker_pub, trajectory_pub, current_traj_pub, command_pt_pub, command_pt_viz_pub;
 tf::TransformListener * listener;
 px4_trajectory_replanning::Configuration config;
+std::string config_path;
 
 MissionState mission_state = MISSION_HOLD;
+
+sensor_msgs::CameraInfo camera_info_msg_;
 
 void loadParam(const std::string path);
 void saveParam();
@@ -101,7 +104,37 @@ bool missionCommandParam(px4_trajectory_replanning::MAV_MISSION_COMMAND::Request
 
 void saveParam()
 {
+  YAML::Node node;
+  try
+  {
+    // load yaml
+    node = YAML::LoadFile(config_path.c_str());
+  }
 
+  catch (const std::exception& e)
+  {
+    ROS_ERROR("Fail to load yaml file.");
+  }
+
+  YAML::Node node_pp = node["path_plnanning"];
+
+  node_pp["max_velocity"] = config.max_velocity;
+  node_pp["max_acceleration"] = config.max_acceleration;
+  node_pp["resolution"] = config.resolution;
+  node_pp["num_opt_points"] = config.num_opt_points;
+
+  node_pp["step_size"] = config.step_size;
+  node_pp["rrt_factor"] = config.rrt_factor;
+  node_pp["max_solve_t"] = config.max_solve_t;
+  node_pp["uav_radius"] = config.uav_radius;
+  node_pp["num_iter"] = config.num_iter;
+
+  node_pp["num_pt_window"] = config.num_pt_window;
+  node_pp["clear_distance"] = config.clear_distance;
+  node_pp["max_check_dist"] = config.max_check_dist;
+
+  std::ofstream fout(config_path.c_str());
+  fout << node_pp;
 }
 
 void loadParam(const std::string path)
@@ -116,7 +149,6 @@ void loadParam(const std::string path)
   } catch (const std::exception& e)
   {
       ROS_ERROR("Fail to load yaml file.");
-//      return;
   }
 
       YAML::Node node_pp = node["path_plnanning"];
@@ -139,6 +171,11 @@ void loadParam(const std::string path)
       YAML::Node node_g = node["global"];
       dt = node_g["dt"].as<double>();
 
+}
+
+void cameraInfoCallback(const sensor_msgs::CameraInfo & msg)
+{
+  camera_info_msg_ = msg;
 }
 
 void depthImageCallback(const sensor_msgs::Image::ConstPtr& msg)
@@ -259,7 +296,7 @@ int main(int argc, char** argv){
     ros::NodeHandle nh;
     ros::NodeHandle pnh("~");
 
-    std::string config_path = ros::package::getPath("px4_trajectory_replanning")+"/config/config.yaml";
+    config_path = ros::package::getPath("px4_trajectory_replanning")+"/config/config.yaml";
     loadParam(config_path);
 
     listener = new tf::TransformListener;
@@ -277,10 +314,9 @@ int main(int argc, char** argv){
 
     ros::ServiceServer mission_command_server = nh.advertiseService("controllers/mission_command_param", missionCommandParam);
 
+    ros::Subscriber camera_info_sub_ = nh.subscribe("camera/depth/camera_info", 10, cameraInfoCallback);
     message_filters::Subscriber<sensor_msgs::Image> depth_image_sub_ ;
-    message_filters::Subscriber<sensor_msgs::CameraInfo> camera_info_sub_;
     depth_image_sub_.subscribe(nh, "camera/depth/image_raw", 5);
-    camera_info_sub_.subscribe(nh, "camera/depth/camera_info", 1);
 
     tf::MessageFilter<sensor_msgs::Image> tf_filter_(depth_image_sub_, *listener, "world", 5);
     tf_filter_.registerCallback(depthImageCallback);

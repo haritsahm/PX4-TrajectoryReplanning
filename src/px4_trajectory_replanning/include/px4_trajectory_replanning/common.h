@@ -6,6 +6,8 @@
 #include <nav_msgs/Odometry.h>
 #include <eigen3/Eigen/Eigen>
 
+typedef std::map<int, std::string> Log;
+
 enum TOLState{
   TOL_STATE_LAND = 0,
   TOL_STATE_TAKEOFF=1
