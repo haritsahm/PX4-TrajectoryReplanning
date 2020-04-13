@@ -16,6 +16,8 @@ LeePositionController::LeePositionController(ros::NodeHandle &nh):
 
   cmd_req_server = nh_.advertiseService("controllers/pos_controller_cmd",
                                         &LeePositionController::commandCallback, this);
+  mission_controller_cmd_server = nh_.advertiseService("controllers/mission_controller_cmd",
+                                        &LeePositionController::missionCommandCallback, this);
   get_pos_state_server = nh_.advertiseService("controllers/get_pos_controller_state",
                                               &LeePositionController::getControllerState, this);
 
@@ -28,6 +30,8 @@ LeePositionController::LeePositionController(ros::NodeHandle &nh):
   controller_state = ControllerState::CONTROLLER_STATE_LAND;
   controller_ready = false;
   request_hold = true;
+  mission_hold = true;
+  mission_controller_state = POSControllerCMD::POS_CMD_MISSION_HOLD;
 
   p_targ = v_targ = a_targ = Eigen::Vector3d::Zero();
 
@@ -38,6 +42,12 @@ LeePositionController::LeePositionController(ros::NodeHandle &nh):
 inline Eigen::Vector3d LeePositionController::toEigen(const geometry_msgs::Point& p) {
   Eigen::Vector3d ev3(p.x, p.y, p.z);
   return ev3;
+}
+
+bool LeePositionController::missionCommandCallback(px4_trajectory_replanning::POS_CONTROLLER_COMMAND::Request &req,
+                                                   px4_trajectory_replanning::POS_CONTROLLER_COMMAND::Response &res)
+{
+  mission_controller_state =  req.cmd_req;
 }
 
 bool LeePositionController::commandCallback(px4_trajectory_replanning::POS_CONTROLLER_COMMAND::Request  &req,
@@ -180,7 +190,7 @@ void LeePositionController::followBSpline()
     last_yaw = mav_msgs::yawFromQuaternion(mavAtt_);
   }
 
-  if(time_elapsed > b_spline_->maxValidTime()) {
+  if(time_elapsed > b_spline_->maxValidTime() || mission_hold) {
     b_spline_->push_back(b_spline_->getControlPoint(b_spline_->size()-1));
     ROS_WARN("Adding last point once again!");
   }
@@ -235,6 +245,25 @@ void LeePositionController::spin()
     {
       if(traj_type == TRAJ_MISSION)
       {
+        switch (mission_controller_state) {
+        case POSControllerCMD::POS_CMD_MISSION_HOLD:
+        {
+          mission_hold = true;
+          break;
+        }
+        case POSControllerCMD::POS_CMD_MISSION_START:
+        {
+          mission_hold = true;
+          break;
+        }
+        case POSControllerCMD::POS_CMD_MISSION_STOP:
+        {
+          request_hold = true;
+          controller_cmd = POSControllerCMD::POS_CMD_HOLD;
+          break;
+        }
+        }
+
         followBSpline();
       }
 

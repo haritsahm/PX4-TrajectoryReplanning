@@ -14,3 +14,20 @@ path_planning:
 
 global:
   dt: 0.5
+  initial_alt: 1.0
+
+mission:
+  use_wp: true
+  limit: [1, 2, 0, 0]
+  cones:
+    start: [0, 0, 1]
+    middle: [20, -15, 1]
+    stop: [0, -30, 1]
+  forest:
+    start: [0, 0, 0.6]
+    middle: [15, -15, 0.6]
+    stop: [20, -30, 0.6]
+  big_forest:
+    start: [0, 0, 0.5]
+    middle: [35, -35, 0.5]
+    stop: [70, -70, 0.5]

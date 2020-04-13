@@ -17,7 +17,7 @@
     <arg name="stop_z" value="1.0"/>
     <arg name="stop_yaw" value="$(eval -pi/4)"/>
 
-    <node name="trajectory_replanning_example" pkg="ewok_simulation" type="trajectory_replanning_rrt" output="screen">
+    <node name="px4_replanning_rrt_node" pkg="px4_trajectory_replanning" type="px4_replanning_rrt_node" output="screen">
 
         <param name="dt" value="$(arg dt)" />
         <param name="num_opt_points" value="$(arg num_opt_points)" />
@@ -36,10 +36,8 @@
         <param name="stop_y" value="$(arg stop_y)" />
         <param name="stop_z" value="$(arg stop_z)" />
         <param name="stop_yaw" value="$(arg stop_yaw)" />
+
+        <remap from="/camera/depth/image_raw" to="/r200/depth/image_raw" />
+        <remap from="/camera/depth/camera_info" to="/r200/depth/camera_info" />
     </node>
-
-
-    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
-    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
-
 </launch>

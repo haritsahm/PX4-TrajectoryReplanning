@@ -1,10 +1,13 @@
 # Constant Config
-uint8 MAV_MISSION_START = 0
-uint8 MAV_MISSION_STOP = 1
-uint8 MAV_MISSION_HOLD = 2
+#uint8 MAV_MISSION_START = 0
+#uint8 MAV_MISSION_STOP = 1
+#uint8 MAV_MISSION_HOLD = 2
 
-# Mission Command
+# Mission Command from UI using MissionCMD
 uint8 mission_command
+
+# Mission Command from Offb
+bool allowed
 
 # Set Parameter
 Configuration config

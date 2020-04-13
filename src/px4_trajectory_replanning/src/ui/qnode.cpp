@@ -22,7 +22,7 @@ QNode::~QNode()
 
 bool QNode::init()
 {
-  ros::init(init_argc_, init_argv_, "px4_controller_node");
+  ros::init(init_argc_, init_argv_, "px4_interface_node");
 
   if (!ros::master::check())
   {
@@ -37,7 +37,7 @@ bool QNode::init()
       "controllers/get_mavstate");
   request_command_client = ros_node.serviceClient<px4_trajectory_replanning::MAV_CONTROLLER_COMMAND>(
         "controllers/offboard_command");
-  mission_command_client = ros_node.serviceClient<px4_trajectory_replanning::MAV_MISSION_COMMAND>("controllers/mission_command");
+  mission_command_client = ros_node.serviceClient<px4_trajectory_replanning::MAV_MISSION_COMMAND>("controllers/mission_command_param");
 
   px4_trajectory_replanning::MAV_MISSION_COMMAND mission_cmd;
   mission_cmd.request.request_param = true;
@@ -140,19 +140,19 @@ void QNode::sendingMissionCommand(Parameter param)
   switch (param.mission_req) {
   case REQ_MISSION_START:
   {
-    srv.request.mission_command = MAV_MISSION_COMMAND::Request::MAV_MISSION_START;
+    srv.request.mission_command = MissionCMD::MISSION_START;
     break;
   }
 
   case REQ_MISSION_STOP:
   {
-    srv.request.mission_command = MAV_MISSION_COMMAND::Request::MAV_MISSION_STOP;
+    srv.request.mission_command = MissionCMD::MISSION_STOP;    
     break;
   }
 
   case REQ_MISSION_HOLD:
   {
-    srv.request.mission_command = MAV_MISSION_COMMAND::Request::MAV_MISSION_HOLD;
+    srv.request.mission_command = MissionCMD::MISSION_HOLD;
     break;
   }
 
@@ -187,6 +187,13 @@ void QNode::sendingMissionCommand(Parameter param)
   }
   else
     ROS_DEBUG_STREAM_COND(debug_, "CONTROLLER UI : Failed to call service Mission Command");
+
+  if(param.mission_req == REQ_MISSION_STOP)
+  {
+    ReqControllerCMD cmd = ReqControllerCMD::REQ_CONTROLLER_HOLD;
+    sendingControllerCommand(cmd);
+  }
+
 }
 
 void QNode::run()

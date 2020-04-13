@@ -17,6 +17,7 @@
 #include <px4_trajectory_replanning/MAV_CONTROLLER_COMMAND.h>
 #include <px4_trajectory_replanning/GetMAV_STATE.h>
 #include <px4_trajectory_replanning/GetPOS_CONTROLLER_STATE.h>
+#include <px4_trajectory_replanning/MAV_MISSION_COMMAND.h>
 #include <eigen3/Eigen/Eigen>
 #include <px4_trajectory_replanning/common.h>
 
@@ -100,6 +101,8 @@ int main(int argc, char **argv)
       ("mavros/cmd/land");
   ros::ServiceClient pos_controller_cmd_client = nh.serviceClient<px4_trajectory_replanning::POS_CONTROLLER_COMMAND>
       ("controllers/pos_controller_cmd");
+  ros::ServiceClient mission_param_cmd_client = nh.serviceClient<px4_trajectory_replanning::MAV_MISSION_COMMAND>
+      ("controllers/mission_command_param");
   ros::ServiceClient pos_controller_state_client = nh.serviceClient<px4_trajectory_replanning::GetPOS_CONTROLLER_STATE>
       ("controllers/get_pos_controller_state");
 
@@ -215,6 +218,7 @@ int main(int argc, char **argv)
       case OffbCMD::TOL_CMD_MISSION:
       {
         px4_trajectory_replanning::POS_CONTROLLER_COMMAND pos_cmd_srv;
+        px4_trajectory_replanning::MAV_MISSION_COMMAND mission_cmd_srv;
         if(pos_controller_state.controller_ready)
         {
           pos_cmd_srv.request.cmd_req = POSControllerCMD::POS_CMD_MISSION_FOLLOW;
@@ -224,7 +228,15 @@ int main(int argc, char **argv)
             ROS_DEBUG_STREAM_COND(debug, "MAVROS CONTROLLER : Cant Call POS Command Service");
         }
         else
-          ROS_WARN_COND(debug, "MAVROS CONTROLLER : POS Controller Not Ready");
+          ROS_WARN_COND(debug, "MAVROS CONTROLLER : Mission Controller Not Ready");
+
+        mission_cmd_srv.request.allowed = true;
+        if(mission_param_cmd_client.call(mission_cmd_srv))
+          ROS_DEBUG_STREAM_COND(debug, "MAVROS CONTROLLER : Allowed Mission to Run");
+        else
+          ROS_DEBUG_STREAM_COND(debug, "MAVROS CONTROLLER : Cant Call Mission Command Service");
+
+
         break;
       }
 

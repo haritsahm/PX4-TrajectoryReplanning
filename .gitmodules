@@ -12,10 +12,13 @@
 	url = https://github.com/ethz-asl/mav_comm
 [submodule "src/ewok"]
 	path = src/ewok
-	url = https://github.com/haritsahm/ewok.git
+	url = https://github.com/haritsahm/ewok-clone.git
 [submodule "src/mavros_controllers"]
 	path = src/mavros_controllers
 	url = https://github.com/haritsahm/mavros_controllers.git
 [submodule "src/px4"]
 	path = src/px4
 	url = https://github.com/haritsahm/Firmware.git
+[submodule "src/mavros"]
+	path = src/mavros
+	url = https://github.com/haritsahm/mavros.git

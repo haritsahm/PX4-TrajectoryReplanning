@@ -28,7 +28,7 @@ OffboardController::OffboardController(int argc, char** argv, QWidget *parent) :
   connect(this, &OffboardController::requestControllerCommand, qnode_, &QNode::sendingControllerCommand);
 
   qRegisterMetaType<Parameter>("Parameter");
-  connect(this, SIGNAL(requestMissionParam(Parameter)), qnode_, SLOT(sendingMissionCommand(Parameter)));
+  connect(this, SIGNAL(requestMissionCommand(Parameter)), qnode_, SLOT(sendingMissionCommand(Parameter)));
 
   qRegisterMetaType<px4_trajectory_replanning::Configuration>("px4_trajectory_replanning::Configuration");
   connect(qnode_, SIGNAL(updateMissionParam(px4_trajectory_replanning::Configuration)), this, SLOT(setMissionParam(px4_trajectory_replanning::Configuration)));

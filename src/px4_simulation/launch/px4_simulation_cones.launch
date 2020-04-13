@@ -1,0 +1,15 @@
+<launch>
+
+    <arg name="vehicle" default="iris"/>
+
+    <include file="$(find px4_simulation)/launch/px4_mavros_sitl.launch">
+        <arg name="x" value="-15.0"/>
+        <arg name="y" value="15.0"/>
+        <arg name="z" value="0"/>
+        <arg name="R" value="0"/>
+        <arg name="P" value="0"/>
+        <arg name="Y" value="0"/>
+        <arg name="vehicle" value="$(arg vehicle)"/>
+        <arg name="world" value="$(find px4_simulation)/worlds/cones.world"/>
+    </include>
+</launch>

@@ -1,0 +1,4 @@
+<launch>
+    <env name="GAZEBO_MODEL_PATH" value="$(find rotors_gazebo)/models:$(find ewok_simulation)/models"/>
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find px4_trajectory_replanning)/rviz/simulation.rviz" />
+</launch>

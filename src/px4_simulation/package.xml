@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package format="2">
-  <name>offb</name>
+  <name>px4_simulation</name>
   <version>0.0.0</version>
-  <description>The offb package</description>
+  <description>The px4_simulation package</description>
 
   <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <!-- Example:  -->
@@ -19,7 +19,7 @@
   <!-- Url tags are optional, but multiple are allowed, one per tag -->
   <!-- Optional attribute type can be: website, bugtracker, or repository -->
   <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/offb</url> -->
+  <!-- <url type="website">http://wiki.ros.org/px4_simulation</url> -->
 
 
   <!-- Author tags are optional, multiple are allowed, one per tag -->
@@ -49,19 +49,31 @@
   <!-- Use doc_depend for packages you need only for building documentation: -->
   <!--   <doc_depend>doxygen</doc_depend> -->
   <buildtool_depend>catkin</buildtool_depend>
+  <!-- <buildtool_depend>gazebo_ros</buildtool_depend>
+  <build_depend>eigen</build_depend>
+  <build_depend>gazebo_ros</build_depend>
   <build_depend>geometry_msgs</build_depend>
+  <build_depend>mavlink</build_depend>
+  <build_depend>mavros</build_depend>
   <build_depend>mavros_msgs</build_depend>
+  <build_depend>protobuf-dev</build_depend>
   <build_depend>roscpp</build_depend>
+  <build_depend>sensor_msgs</build_depend>
   <build_depend>std_msgs</build_depend>
-  <build_export_depend>geometry_msgs</build_export_depend>
-  <build_export_depend>mavros_msgs</build_export_depend>
-  <build_export_depend>roscpp</build_export_depend>
-  <build_export_depend>std_msgs</build_export_depend>
+  <build_depend>python-rospkg</build_depend>
+  <build_depend>python-jinja2</build_depend>
+  <exec_depend>eigen</exec_depend>
+  <exec_depend>gazebo_ros</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>gstreamer1.0-plugins-bad</exec_depend>
+  <exec_depend>gstreamer1.0-plugins-good</exec_depend>
+  <exec_depend>gstreamer1.0-plugins-ugly</exec_depend>
+  <exec_depend>mavlink</exec_depend>
+  <exec_depend>mavros</exec_depend>
   <exec_depend>mavros_msgs</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>roscpp</exec_depend>
-  <exec_depend>std_msgs</exec_depend>
-
+  <exec_depend>std_msgs</exec_depend> -->
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>

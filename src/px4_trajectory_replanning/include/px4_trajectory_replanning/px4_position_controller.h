@@ -40,6 +40,8 @@ public:
     inline Eigen::Vector3d toEigen(const geometry_msgs::Point& p);
     bool commandCallback(px4_trajectory_replanning::POS_CONTROLLER_COMMAND::Request  &req,
              px4_trajectory_replanning::POS_CONTROLLER_COMMAND::Response &res);
+    bool missionCommandCallback(px4_trajectory_replanning::POS_CONTROLLER_COMMAND::Request  &req,
+             px4_trajectory_replanning::POS_CONTROLLER_COMMAND::Response &res);
     bool getControllerState(px4_trajectory_replanning::GetPOS_CONTROLLER_STATE::Request &req,
                                                    px4_trajectory_replanning::GetPOS_CONTROLLER_STATE::Response &res);
     void PointCallback(const geometry_msgs::PointConstPtr & point_msg);
@@ -63,6 +65,8 @@ private:
     ros::Publisher referencePub_;
     ros::ServiceServer get_pos_state_server;
     ros::ServiceServer cmd_req_server;
+    ros::ServiceServer mission_controller_cmd_server;
+
 
     ros::NodeHandle nh_;
 
@@ -77,6 +81,8 @@ private:
 
     int controller_cmd; bool req_cmd_tol=false;
     bool request_hold = false;
+    int mission_controller_state;
+    bool mission_hold;
 
     nav_msgs::Odometry odom_;
     Eigen::Vector3d mavPos_, mavVel_, mavRate_, lastPos_;
