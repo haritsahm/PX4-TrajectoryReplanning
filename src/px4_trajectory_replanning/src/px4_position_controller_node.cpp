@@ -1,28 +1,37 @@
 #include <px4_trajectory_replanning/px4_position_controller.h>
 
-LeePositionController::LeePositionController(ros::NodeHandle &nh):
+MotionController::MotionController(ros::NodeHandle &nh):
   nh_(nh)
 {
   cmd_poly_sub_ = nh_.subscribe(
-        "command/point", 10,
-        &LeePositionController::PointCallback, this);
+        "trajectory/command/point", 10,
+        &MotionController::PointCallback, this);
 
 
-  position_sub_ = nh_.subscribe("/mavros/local_position/pose", 1,
-                                &LeePositionController::mavPosCallback, this);
+  position_sub_ = nh_.subscribe("/mavros/local_position/pose", 10,
+                                &MotionController::mavPosCallback, this);
+  odometry_sub_ = nh_.subscribe("/mavros/local_position/odom", 10,
+                               &MotionController::OdometryCallback, this);
 
   referencePub_ = nh_.advertise<controller_msgs::FlatTarget>("reference/flatsetpoint", 1);
-
+  yawPub_ = nh_.advertise<std_msgs::Float32>("reference/yaw", 1);
+  pathPub_ = nh_.advertise<trajectory_msgs::MultiDOFJointTrajectory>("/command/trajectory", 1);
 
   cmd_req_server = nh_.advertiseService("controllers/pos_controller_cmd",
-                                        &LeePositionController::commandCallback, this);
+                                        &MotionController::commandCallback, this);
   mission_controller_cmd_server = nh_.advertiseService("controllers/mission_controller_cmd",
-                                        &LeePositionController::missionCommandCallback, this);
+                                        &MotionController::missionCommandCallback, this);
   get_pos_state_server = nh_.advertiseService("controllers/get_pos_controller_state",
-                                              &LeePositionController::getControllerState, this);
+                                              &MotionController::getControllerState, this);
+
+  std::string path = ros::package::getPath("px4_trajectory_replanning") + "/config/config.yaml";
+  loadParam(path);
 
   ros::NodeHandle pnh("~");
-  pnh.param("dt", dt, 0.5);
+  pnh.param("dt", dt, global_cofing["dt"].as<double>());
+
+  GetVehicleParameters(pnh, &lee_position_controller_.vehicle_parameters_);
+  lee_position_controller_.InitializeParameters();
 
   b_spline_.reset(new ewok::UniformBSpline3D<6, double>(dt));
   time_elapsed = 0;
@@ -39,18 +48,41 @@ LeePositionController::LeePositionController(ros::NodeHandle &nh):
 
 }
 
-inline Eigen::Vector3d LeePositionController::toEigen(const geometry_msgs::Point& p) {
+void MotionController::loadParam(const std::string path)
+{
+  YAML::Node node;
+
+  try
+  {
+    // load yaml
+    node = YAML::LoadFile(path.c_str());
+  }
+  catch (const std::exception& e)
+  {
+    ROS_ERROR("Fail to load yaml file.");
+  }
+
+  controller_config = node["controllers"];
+  lee_position_controller_.controller_parameters_.position_gain_ = controller_config["position_gain"].as<Eigen::Vector3d>();
+  lee_position_controller_.controller_parameters_.velocity_gain_ = controller_config["velocity_gain"].as<Eigen::Vector3d>();
+  lee_position_controller_.controller_parameters_.attitude_gain_ = controller_config["attitude_gain"].as<Eigen::Vector3d>();
+  lee_position_controller_.controller_parameters_.angular_rate_gain_ = controller_config["angular_rate_gain"].as<Eigen::Vector3d>();
+
+  global_cofing = node["global"];
+}
+
+inline Eigen::Vector3d MotionController::toEigen(const geometry_msgs::Point& p) {
   Eigen::Vector3d ev3(p.x, p.y, p.z);
   return ev3;
 }
 
-bool LeePositionController::missionCommandCallback(px4_trajectory_replanning::POS_CONTROLLER_COMMAND::Request &req,
+bool MotionController::missionCommandCallback(px4_trajectory_replanning::POS_CONTROLLER_COMMAND::Request &req,
                                                    px4_trajectory_replanning::POS_CONTROLLER_COMMAND::Response &res)
 {
   mission_controller_state =  req.cmd_req;
 }
 
-bool LeePositionController::commandCallback(px4_trajectory_replanning::POS_CONTROLLER_COMMAND::Request  &req,
+bool MotionController::commandCallback(px4_trajectory_replanning::POS_CONTROLLER_COMMAND::Request  &req,
                                             px4_trajectory_replanning::POS_CONTROLLER_COMMAND::Response &res)
 {
   req_cmd_tol = true;
@@ -65,7 +97,7 @@ bool LeePositionController::commandCallback(px4_trajectory_replanning::POS_CONTR
   return true;
 }
 
-bool LeePositionController::getControllerState(px4_trajectory_replanning::GetPOS_CONTROLLER_STATE::Request &req,
+bool MotionController::getControllerState(px4_trajectory_replanning::GetPOS_CONTROLLER_STATE::Request &req,
                                                px4_trajectory_replanning::GetPOS_CONTROLLER_STATE::Response &res)
 {
   res.controller_state.controller_state = controller_state;
@@ -73,7 +105,7 @@ bool LeePositionController::getControllerState(px4_trajectory_replanning::GetPOS
   return true;
 }
 
-void LeePositionController::PointCallback(const geometry_msgs::PointConstPtr & point_msg)
+void MotionController::PointCallback(const geometry_msgs::PointConstPtr & point_msg)
 {
   ROS_INFO("PointCallback: %d points in spline", b_spline_->size());
 
@@ -82,7 +114,7 @@ void LeePositionController::PointCallback(const geometry_msgs::PointConstPtr & p
   if(b_spline_->size() != 0) b_spline_->push_back(p);
 }
 
-void LeePositionController::mavPosCallback(const geometry_msgs::PoseStamped& msg)
+void MotionController::mavPosCallback(const geometry_msgs::PoseStamped& msg)
 {
   mavPos_ = toEigen(msg.pose.position);
   mavAtt_.w() = msg.pose.orientation.w;
@@ -98,7 +130,12 @@ void LeePositionController::mavPosCallback(const geometry_msgs::PoseStamped& msg
 
 }
 
-void LeePositionController::pubrefState(){
+void MotionController::OdometryCallback(const nav_msgs::OdometryConstPtr& odometry_msg)
+{
+  rotors_control::eigenOdometryFromMsg(odometry_msg, &odometry);
+}
+
+void MotionController::pubrefState(){
   controller_msgs::FlatTarget msg;
 
   msg.header.stamp = ros::Time::now();
@@ -113,10 +150,23 @@ void LeePositionController::pubrefState(){
   msg.acceleration.x = a_targ(0);
   msg.acceleration.y = a_targ(1);
   msg.acceleration.z = a_targ(2);
+  msg.jerk.x = 0;
+  msg.jerk.y = 0;
+  msg.jerk.z = 0;
   referencePub_.publish(msg);
 }
 
-void LeePositionController::followTraj()
+void MotionController::pubBodyRate()
+{
+  
+}
+
+void MotionController::calculateBodyRate()
+{
+
+}
+
+void MotionController::followTraj()
 {
   p_targ = traj->evaluate(time_elapsed, 0);
   v_targ = traj->evaluate(time_elapsed, 1);
@@ -128,9 +178,10 @@ void LeePositionController::followTraj()
     if(time_elapsed < traj->duration())
       time_elapsed += dt;
   }
+
 }
 
-void LeePositionController::generateTraj(Eigen::Vector3d start, Eigen::Vector3d tar, Eigen::Vector4d limits)
+void MotionController::generateTraj(Eigen::Vector3d start, Eigen::Vector3d tar, Eigen::Vector4d limits)
 {
   Eigen::Vector3d mid_point = (start + tar)/2;
 
@@ -146,7 +197,7 @@ void LeePositionController::generateTraj(Eigen::Vector3d start, Eigen::Vector3d 
   traj = po.computeTrajectory(vec);
 }
 
-void LeePositionController::getTrajectoryPoint(double t,
+void MotionController::getTrajectoryPoint(double t,
                                                mav_msgs::EigenTrajectoryPoint& command_trajectory, bool & yaw_from_traj) {
 
 
@@ -182,42 +233,87 @@ void LeePositionController::getTrajectoryPoint(double t,
 
 }
 
-void LeePositionController::followBSpline()
+void MotionController::followBSpline()
 {
   if(b_spline_->size() == 0) {
-    for(int i=0; i<6; i++) b_spline_->push_back(mavPos_);
+    for(int i=0; i<7; i++) b_spline_->push_back(mavPos_);
     init_time = ros::Time::now();
+    traj_pt_counter = 0;
     last_yaw = mav_msgs::yawFromQuaternion(mavAtt_);
   }
 
   if(time_elapsed > b_spline_->maxValidTime() || mission_hold) {
-    b_spline_->push_back(b_spline_->getControlPoint(b_spline_->size()-1));
-    ROS_WARN("Adding last point once again!");
+    if(traj_pt_counter < 8)
+      {     
+        b_spline_->push_back(b_spline_->getControlPoint(b_spline_->size()-1));
+        ROS_WARN("Adding last point once again!");
+      }
+    traj_pt_counter++;
   }
 
   bool yaw_from_traj;
   mav_msgs::EigenTrajectoryPoint command_trajectory;
-  getTrajectoryPoint(time_elapsed, command_trajectory, yaw_from_traj);
+  // getTrajectoryPoint(time_elapsed, command_trajectory, yaw_from_traj);
+  // lee_position_controller_.SetTrajectoryPoint(command_trajectory);
+  // lee_position_controller_.SetOdometry(odometry);
+
+  p_targ = b_spline_->evaluate(time_elapsed, 0);
+  v_targ = b_spline_->evaluate(time_elapsed, 1);
+  a_targ = b_spline_->evaluate(time_elapsed, 2);
+
+  static const double eps = 0.1;
+  static const double delta = 0.02;
+
+  Eigen::Vector3d d_t = b_spline_->evaluate(time_elapsed + eps, 0) - command_trajectory.position_W;
+
+  yaw_from_traj = false;
+
+  if(std::abs(d_t[0]) > delta || std::abs(d_t[1]) > delta) {
+    double yaw = std::atan2(d_t[1], d_t[0]);
+    yaw_from_traj = true;
+
+    targ_yaw = yaw;
+    // command_trajectory.setFromYaw(yaw);
+
+  //   Eigen::Vector3d d_t_e = b_spline_->evaluate(time_elapsed + 2*eps, 0) - b_spline_->evaluate(time_elapsed + eps, 0);
+
+  //   if(std::abs(d_t_e[0]) > delta || std::abs(d_t_e[1]) > delta) {
+  //     double yaw_e = std::atan2(d_t_e[1], d_t_e[0]);
+  //     double yaw_rate = (yaw_e - yaw) / eps;
+  //     command_trajectory.setFromYawRate(yaw_rate);
+  //   } else {
+  //     command_trajectory.setFromYawRate(0);
+  //   }
+
+  }
 
   if(!yaw_from_traj) {
-    command_trajectory.setFromYaw(last_yaw);
-    command_trajectory.setFromYawRate(0);
+    targ_yaw = last_yaw;
+    // command_trajectory.setFromYaw(last_yaw);
+    // command_trajectory.setFromYawRate(0);
   } else {
-    last_yaw = command_trajectory.getYaw();
+    last_yaw = mav_msgs::yawFromQuaternion(mavAtt_);
   }
 
   Eigen::Vector3d target_pos = b_spline_->evaluate(time_elapsed, 0);
-  if(Eigen::Vector3d(target_pos - mavPos_).norm() < 0.5)
+  if(Eigen::Vector3d(target_pos - mavPos_).norm() < 0.2)
   {
     if(time_elapsed < b_spline_->maxValidTime())
-      time_elapsed += dt;
+      {
+        time_elapsed += dt;
+        traj_pt_counter=0;
+        }
   }
+
+  std_msgs::Float32 msg;
+  msg.data = targ_yaw;
+  yawPub_.publish(msg);
 
 }
 
-void LeePositionController::spin()
+void MotionController::spin()
 {
-  ros::Rate rate(100);
+  ros::Rate rate(1/0.01);
   controller_ready = true;
 
   while(ros::ok())
@@ -253,7 +349,7 @@ void LeePositionController::spin()
         }
         case POSControllerCMD::POS_CMD_MISSION_START:
         {
-          mission_hold = true;
+          mission_hold = false;
           break;
         }
         case POSControllerCMD::POS_CMD_MISSION_STOP:
@@ -319,7 +415,7 @@ int main(int argc, char **argv)
 {
   ros::init(argc, argv, "px4_position_controller_node");
   ros::NodeHandle nh;
-  LeePositionController controller(nh);
+  MotionController controller(nh);
 
   return 0;
 }

@@ -12,6 +12,13 @@ path_planning:
   clear_distance: 1.2
   max_check_dist: 2.5
 
+# Lee position controller parameters
+controllers:
+  position_gain: [6, 6, 6]
+  velocity_gain: [4.7, 4.7, 4.7]
+  attitude_gain: [2, 3, 0.15]
+  angular_rate_gain: [0.4, 0.52, 0.18]
+
 global:
   dt: 0.5
   initial_alt: 1.0

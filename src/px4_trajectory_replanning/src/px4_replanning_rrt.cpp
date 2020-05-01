@@ -29,7 +29,9 @@ MissionController::MissionController(ros::NodeHandle& nh)
   , running_hold(false)
   , initialized(false)
   , mission_state(MissionCMD::MISSION_HOLD)
-  , debug(false)
+  , prev_mission_state(99)
+  , core_debug(true)
+  , process_debug(true)
   , gazebo_sim(true)
   , new_wp_initialized(true)
 {
@@ -38,39 +40,37 @@ MissionController::MissionController(ros::NodeHandle& nh)
 
 void MissionController::init()
 {
-  if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug))
-  {
-    ros::console::notifyLoggerLevelsChanged();
-  }
+  // if (ros::console::set_logger_level(ROSCONSOLE_DEFAULT_NAME, ros::console::levels::Debug))
+  // {
+  //   ros::console::notifyLoggerLevelsChanged();
+  // }
 
   config_path = ros::package::getPath("px4_trajectory_replanning") + "/config/config.yaml";
   loadParam(config_path);
 
-  //   listener = new tf::TransformListener;
-
   occ_marker_pub = nh_.advertise<visualization_msgs::Marker>("ring_buffer/occupied", 5);
   free_marker_pub = nh_.advertise<visualization_msgs::Marker>("ring_buffer/free", 5);
   dist_marker_pub = nh_.advertise<visualization_msgs::Marker>("ring_buffer/distance", 5);
-  command_pt_viz_pub = nh_.advertise<visualization_msgs::Marker>("ring_buffer/command_pt", 5);
-  trajectory_pub = nh_.advertise<geometry_msgs::Point>("trajectory/command/point", 10);
-  current_traj_pub = nh_.advertise<visualization_msgs::MarkerArray>("trajectory/optimal_trajectory", 1, true);
-  rrt_planner_pub = nh_.advertise<visualization_msgs::MarkerArray>("trajectory/rrt_trajectory", 1, true);
+  trajectory_pub = nh_.advertise<geometry_msgs::Point>("trajectory/command/point", 50);
+  current_traj_pub = nh_.advertise<visualization_msgs::MarkerArray>("trajectory/optimal_trajectory", 50, true);
+  rrt_planner_pub = nh_.advertise<visualization_msgs::MarkerArray>("trajectory/rrt_trajectory", 50, true);
 
-  traj_marker_pub = nh_.advertise<visualization_msgs::MarkerArray>("trajectory/global_trajectory", 1, true);
-  traj_checker_pub = nh_.advertise<visualization_msgs::Marker>("trajectory/checker_trajectory", 1, true);
+  traj_marker_pub = nh_.advertise<visualization_msgs::MarkerArray>("trajectory/global_trajectory", 50, true);
+  traj_checker_pub = nh_.advertise<visualization_msgs::Marker>("trajectory/checker_trajectory", 50, true);
 
   mission_command_server =
       nh_.advertiseService("controllers/mission_command_param", &MissionController::missionCommandParam, this);
-  mission_controller_cmd_client = nh_.serviceClient<px4_trajectory_replanning::POS_CONTROLLER_COMMAND>("controllers/"
-                                                                                                       "controller_"
-                                                                                                       "cmd");
+  mission_controller_cmd_client =
+  nh_.serviceClient<px4_trajectory_replanning::POS_CONTROLLER_COMMAND>("controllers/mission_controller_cmd");
 
-  camera_info_sub_ = nh_.subscribe("/camera/depth/camera_info", 10, &MissionController::cameraInfoCallback, this);
+  camera_info_sub_ = nh_.subscribe("/camera/depth/camera_info", 50, &MissionController::cameraInfoCallback, this);
   //   message_filters::Subscriber<sensor_msgs::Image> depth_image_sub_;
 
-  depth_image_sub_.subscribe(nh_, "/camera/depth/image_raw", 5);
-  tf_filter_ = new tf::MessageFilter<sensor_msgs::Image>(depth_image_sub_, listener, "map", 5);
+  depth_image_sub_.subscribe(nh_, "/camera/depth/image_raw", 50);
+  tf_filter_ = new tf::MessageFilter<sensor_msgs::Image>(depth_image_sub_, listener, "map", 50);
   tf_filter_->registerCallback(boost::bind(&MissionController::depthImageCallback, this, _1));
+
+  // queue_thread = boost::thread(boost::bind(&MissionController::queueThread, this));
 
   ros::NodeHandle pnh("~");
   std::string map_default = "cones";
@@ -78,7 +78,7 @@ void MissionController::init()
   pnh.param("use_wp", mission_use_wp, true);
   pnh.param("gazebo_sim", gazebo_sim, true);
 
-  traj_checker_marker.header.frame_id = "world";
+  traj_checker_marker.header.frame_id = "map";
   traj_checker_marker.ns = "trajectory_checker";
   traj_checker_marker.id = 0;
   traj_checker_marker.type = visualization_msgs::Marker::SPHERE_LIST;
@@ -102,32 +102,63 @@ void MissionController::init()
 
   // Starting thread
   ROS_INFO("Starting Thread");
-  // main_thread_ = new boost::thread(&MissionController::spin, this);
-  // main_thread_->join();
+}
+
+void MissionController::queueThread()
+{
+  ros::NodeHandle node_handle;
+  ros::CallbackQueue callback_queue;
+  node_handle.setCallbackQueue(&callback_queue);
+
+  mission_command_server =
+      node_handle.advertiseService("controllers/mission_command_param", &MissionController::missionCommandParam, this);
+  mission_controller_cmd_client = node_handle.serviceClient<px4_trajectory_replanning::POS_CONTROLLER_COMMAND>("control"
+                                                                                                               "lers/"
+                                                                                                               "mission"
+                                                                                                               "_contro"
+                                                                                                               "ller_"
+                                                                                                               "cmd");
+
+  ros::WallDuration duration(0.001);
+  while (node_handle.ok())
+    callback_queue.callAvailable(duration);
 }
 
 bool MissionController::missionCommandParam(px4_trajectory_replanning::MAV_MISSION_COMMAND::Request& req,
                                             px4_trajectory_replanning::MAV_MISSION_COMMAND::Response& res)
 {
-  if (req.request_param)
+  if (req.header.frame_id == "UI Interface")
   {
-    res.response = true;
-    res.config = config;
-  }
-  else if (req.set_param)
-  {
-    if (!req.save)
-      config = req.config;
-    else
+    if (req.request_param == true)
     {
-      saveParam();
+      res.response = true;
+      res.config = config;
     }
+    else if (req.set_param == true)
+    {
+      if (req.save == false)
+        config = req.config;
+      else
+      {
+        saveParam();
+      }
+    }
+
+    if (req.reset_param)
+      new_wp_initialized = true;
+
+    mission_state = req.mission_command;
+    ROS_DEBUG_STREAM_COND_NAMED(core_debug, "mission_planner", "Incoming Command : " << mission_state);
   }
 
-  mission_state = req.mission_command;
-  running_allow = req.allowed;
-  if (running_allow)
-    ROS_WARN("Mission allowed run");
+  else if (req.header.frame_id == "Offboard Controller")
+  {
+    running_allow = req.allowed;
+    if (running_allow)
+      ROS_WARN("Mission allowed run");
+    else
+      ROS_WARN("Mission disabled");
+  }
 
   return true;
 }
@@ -211,8 +242,7 @@ void MissionController::cameraInfoCallback(const sensor_msgs::CameraInfo& msg)
 
 void MissionController::depthImageCallback(const sensor_msgs::Image::ConstPtr& msg)
 {
-  //    ROS_DEBUG_STREAM_COND_NAMED(debug, "mission_planner", "recieved depth image");
-  ROS_INFO_STREAM("FRAME ID " << msg->header.frame_id);
+  //    ROS_DEBUG_STREAM_COND_NAMED(core_debug, "mission_planner", "recieved depth image");
 
   cv_bridge::CvImageConstPtr cv_ptr;
   try
@@ -230,8 +260,6 @@ void MissionController::depthImageCallback(const sensor_msgs::Image::ConstPtr& m
   float cx = camera_info_msg_.K[2];
   float cy = camera_info_msg_.K[5];
 
-  ROS_INFO_STREAM("FRAME ID " << msg->header.frame_id << " TYPE" << msg->encoding);
-
   tf::StampedTransform transform;
 
   try
@@ -240,42 +268,27 @@ void MissionController::depthImageCallback(const sensor_msgs::Image::ConstPtr& m
   }
   catch (tf::TransformException& ex)
   {
-    ROS_DEBUG_STREAM_COND_NAMED(debug, "mission_planner", "Couldn't get transform");
+    ROS_DEBUG_STREAM_COND_NAMED(core_debug, "mission_planner", "Couldn't get transform");
     ROS_WARN("%s", ex.what());
     return;
   }
 
-  ROS_INFO_STREAM("ERROR 1");
-
   Eigen::Affine3d dT_w_c;
   tf::transformTFToEigen(transform, dT_w_c);
 
-      ROS_INFO_STREAM("ERROR Transform");
-
-
   Eigen::Affine3f T_w_c = dT_w_c.cast<float>();
 
-        ROS_INFO_STREAM("ERROR Cast");
-
-
   float* data = (float*)cv_ptr->image.data;
-
-        ROS_INFO_STREAM("ERROR Convert Data");
-
 
   auto t1 = std::chrono::high_resolution_clock::now();
 
   ewok::EuclideanDistanceRingBuffer<6>::PointCloud cloud1;
-
-        ROS_INFO_STREAM("ERROR Converting Depth");
-
 
   for (int u = 0; u < cv_ptr->image.cols; u += 4)
   {
     for (int v = 0; v < cv_ptr->image.rows; v += 4)
     {
       float val = data[v * cv_ptr->image.cols + u];
-      std::cout << "Val : " <<val << std::endl;
 
       // ROS_INFO_STREAM(val);
 
@@ -293,9 +306,6 @@ void MissionController::depthImageCallback(const sensor_msgs::Image::ConstPtr& m
       }
     }
   }
-
-    ROS_INFO_STREAM("ERROR 2");
-
 
   Eigen::Vector3f origin = (T_w_c * Eigen::Vector4f(0, 0, 0, 1)).head<3>();
 
@@ -322,15 +332,13 @@ void MissionController::depthImageCallback(const sensor_msgs::Image::ConstPtr& m
 
     while (diff.array().any())
     {
-      // ROS_DEBUG_STREAM_COND_NAMED(debug, "mission_planner", "Moving Volume");
+      // ROS_DEBUG_STREAM_COND_NAMED(core_debug, "mission_planner", "Moving Volume");
       edrb->moveVolume(diff);
 
       offset = edrb->getVolumeCenter();
       diff = origin_idx - offset;
     }
   }
-    ROS_INFO_STREAM("ERROR 3");
-
 
   edrb->insertPointCloud(cloud1, origin);
 
@@ -338,10 +346,11 @@ void MissionController::depthImageCallback(const sensor_msgs::Image::ConstPtr& m
   edrb->getMarkerOccupied(m_occ);
   edrb->getMarkerFree(m_free);
 
+  m_occ.header.frame_id = "map";
+  m_free.header.frame_id = "map";
+
   occ_marker_pub.publish(m_occ);
   free_marker_pub.publish(m_free);
-    ROS_INFO_STREAM("ERROR 4");
-
 }
 
 void MissionController::missionWaypoint()
@@ -437,11 +446,14 @@ void MissionController::spin()
     // Trying to unpause Gazebo for 10 seconds.
     while (!unpaused)
     {
-      ROS_DEBUG_STREAM_COND_NAMED(debug, "mission_planner", "Wait for 1 second before trying to unpause Gazebo again.");
+      ROS_DEBUG_STREAM_COND_NAMED(core_debug, "mission_planner",
+                                  "Wait for 1 second before trying to unpause Gazebo again.");
       std::this_thread::sleep_for(std::chrono::seconds(1));
       unpaused = ros::service::call("/gazebo/unpause_physics", srv);
       ++i;
     }
+
+    ROS_INFO("Unpaused");
 
     if (!unpaused)
     {
@@ -450,7 +462,7 @@ void MissionController::spin()
     }
     else
     {
-      ROS_DEBUG_STREAM_COND_NAMED(debug, "mission_planner", "Unpaused the Gazebo simulation.");
+      ROS_DEBUG_STREAM_COND_NAMED(core_debug, "mission_planner", "Unpaused the Gazebo simulation.");
     }
 
     /**
@@ -461,6 +473,8 @@ void MissionController::spin()
     // Wait for 5 seconds to let the Gazebo GUI show up.
     ros::Duration(5.0).sleep();
   }
+
+  ROS_INFO("Ready to Run");
 
   double current_time = 0;
   bool start_pt_found = false, finish_pt_found = false;
@@ -500,51 +514,69 @@ void MissionController::spin()
     }
     catch (tf::TransformException& ex)
     {
-      ROS_DEBUG_STREAM_COND_NAMED(debug, "mission_planner", "Couldn't get transform");
+      ROS_DEBUG_STREAM_COND_NAMED(core_debug, "mission_planner", "Couldn't get transform");
       ROS_WARN("%s", ex.what());
     }
+
+    std::cout << "RUNNING " << std::endl;
 
     Eigen::Affine3d base_link;
     tf::transformTFToEigen(transform, base_link);
 
     path_planner->setRobotPos(base_link.translation().cast<float>());
 
-    switch (mission_state)
+    if (mission_state != prev_mission_state)
     {
-      case MissionCMD::MISSION_STOP:
+      px4_trajectory_replanning::POS_CONTROLLER_COMMAND pos_controller_srv;
+
+      switch (mission_state)
       {
-        ROS_DEBUG_STREAM_COND_NAMED(debug, "mission_planner", "POS Command to STOP");
-        px4_trajectory_replanning::POS_CONTROLLER_COMMAND pos_controller_srv;
-        pos_controller_srv.request.cmd_req = POS_CMD_MISSION_STOP;
-        mission_controller_cmd_client.call(pos_controller_srv);
-        running_allow = false;
-        running_hold = true;
-        break;
-      }
-      case MissionCMD::MISSION_HOLD:
-      {
-        ROS_DEBUG_STREAM_COND_NAMED(debug, "mission_planner", "POS Command to HOLD");
-        px4_trajectory_replanning::POS_CONTROLLER_COMMAND pos_controller_srv;
-        pos_controller_srv.request.cmd_req = POS_CMD_MISSION_HOLD;
-        mission_controller_cmd_client.call(pos_controller_srv);
-        running_allow = true;
-        running_hold = true;
-        break;
-      }
-      case MissionCMD::MISSION_START:
-      {
-        ROS_DEBUG_STREAM_COND_NAMED(debug, "mission_planner", "POS Command to START");
-        px4_trajectory_replanning::POS_CONTROLLER_COMMAND pos_controller_srv;
-        pos_controller_srv.request.cmd_req = POS_CMD_MISSION_START;
-        mission_controller_cmd_client.call(pos_controller_srv);
-        running_allow = true;
-        running_hold = false;
-        break;
+        case MissionCMD::MISSION_STOP:
+        {
+          ROS_DEBUG_STREAM_COND_NAMED(process_debug, "mission_planner", "Mission Command to STOP");
+          pos_controller_srv.request.cmd_req = POS_CMD_MISSION_STOP;
+          // mission_controller_cmd_client.call(pos_controller_srv);
+          running_allow = false;
+          running_hold = true;
+          mission_state = MissionCMD::MISSION_PUB;
+          break;
+        }
+        case MissionCMD::MISSION_HOLD:
+        {
+          ROS_DEBUG_STREAM_COND_NAMED(process_debug, "mission_planner", "Mission Command to HOLD");
+          pos_controller_srv.request.cmd_req = POS_CMD_MISSION_HOLD;
+          // mission_controller_cmd_client.call(pos_controller_srv);
+          running_hold = true;
+          mission_state = MissionCMD::MISSION_PUB;
+          break;
+        }
+        case MissionCMD::MISSION_START:
+        {
+          ROS_DEBUG_STREAM_COND_NAMED(process_debug, "mission_planner", "Mission Command to START");
+          pos_controller_srv.request.cmd_req = POS_CMD_MISSION_START;
+          // mission_controller_cmd_client.call(pos_controller_srv);
+          running_allow = true;
+          running_hold = false;
+          mission_state = MissionCMD::MISSION_PUB;
+          break;
+        }
+
+        case MissionCMD::MISSION_PUB:
+        {
+          ROS_DEBUG_STREAM_COND_NAMED(process_debug, "mission_planner", "Publishing Command");
+          if (mission_controller_cmd_client.exists())
+            mission_controller_cmd_client.call(pos_controller_srv);
+          break;
+        }
       }
     }
+    prev_mission_state = mission_state;
 
+    std::cout << "calculating" << std::endl;
+    
     if (current_time < traj->duration() && running_allow)
     {
+      ROS_INFO("Processing");
       std::vector<Eigen::Vector3d> ctrl_points = traj->evaluates(current_time, dt, config.num_pt_window, 0);
       Eigen::Vector3d end_segment_point = traj->evaluateEndSegment(current_time, 0);
       std::vector<Eigen::Vector3f> ctrl_points_f;
@@ -578,7 +610,7 @@ void MissionController::spin()
               time_start = current_time + (dt * i);
               obs_points.push_back(point_next);
               start_pt_found = true;
-              ROS_WARN_STREAM_COND_NAMED(debug, "mission_planner", "FOUND START");
+              ROS_WARN_STREAM_COND_NAMED(core_debug, "mission_planner", "FOUND START");
               std::cout << "Source : \n";
               std::cout << point_prev << std::endl;
               pt_hold = start_point = point_prev;
@@ -605,7 +637,7 @@ void MissionController::spin()
 
             else if (start_pt_found && path_planner->isRunnning())
             {
-              ROS_WARN_STREAM_COND_NAMED(debug, "mission_planner", "FOUND TARGET");
+              ROS_WARN_STREAM_COND_NAMED(core_debug, "mission_planner", "FOUND TARGET");
               flag_holdSpline = true;
               finish_pt_found = true;
               time_stop = current_time + (dt * (i + 1));
@@ -628,7 +660,7 @@ void MissionController::spin()
 
         if (start_pt_found && path_planner->isSolved())
         {
-          ROS_DEBUG_STREAM_COND_NAMED(debug, "mission_planner", "Getting Data from RRT");
+          ROS_DEBUG_STREAM_COND_NAMED(core_debug, "mission_planner", "Getting Data from RRT");
           finish_pt_found = false;
           hold_counter = 0;
           std::list<Eigen::Vector3f> path_points = path_planner->getPathPoints();
@@ -643,7 +675,7 @@ void MissionController::spin()
 
         else if (start_pt_found && !path_planner->isSolved() && path_planner->immidiatePath())
         {
-          ROS_DEBUG_STREAM_COND_NAMED(debug, "mission_planner", "Using Immidiate Path");
+          ROS_DEBUG_STREAM_COND_NAMED(core_debug, "mission_planner", "Using Immidiate Path");
           hold_counter = 0;
           flag_useImmidiate = true;
           std::list<Eigen::Vector3f> temp_path_points = path_planner->getImmidiatePath();
@@ -653,20 +685,20 @@ void MissionController::spin()
             path_planner->addControlPoint(pt);
           }
 
-          ROS_DEBUG_STREAM_COND_NAMED(debug, "mission_planner", "Path from Immidiate Ready");
+          ROS_DEBUG_STREAM_COND_NAMED(core_debug, "mission_planner", "Path from Immidiate Ready");
           flag_holdSpline = false;
         }
 
         // If RRT Not Solved use starting point
         else if (start_pt_found && !path_planner->isSolved() && !path_planner->immidiatePath())
         {
-          ROS_DEBUG_STREAM_COND_NAMED(debug, "mission_planner", "Still Solving RRT");
+          ROS_DEBUG_STREAM_COND_NAMED(core_debug, "mission_planner", "Still Solving RRT");
           if (current_time < time_start)
           {
             if (last_point != ctrl_points_f[0])
             {
               hold_counter = 0;
-              ROS_DEBUG_STREAM_COND_NAMED(debug, "mission_planner", "Using SPline");
+              ROS_DEBUG_STREAM_COND_NAMED(core_debug, "mission_planner", "Using SPline");
               path_planner->addControlPoint(ctrl_points_f[0]);
             }
           }
@@ -688,7 +720,7 @@ void MissionController::spin()
             //                        ctrl_points_f[0].cast<double>()) == ctrl_points_.end())
             if (last_point != ctrl_points_f[0])
             {
-              ROS_DEBUG_STREAM_COND_NAMED(debug, "mission_planner", "Using SPline");
+              ROS_DEBUG_STREAM_COND_NAMED(core_debug, "mission_planner", "Using SPline");
               path_planner->addControlPoint(ctrl_points_f[0]);
             }
         }
@@ -724,15 +756,21 @@ void MissionController::spin()
       traj_checker_pub.publish(traj_checker_marker);
     }
 
+    
+
     if (running_allow && !running_hold &&
         (path_planner->isSolved() || (path_planner->immidiatePath() && flag_useImmidiate)))
     {
-      ROS_WARN_STREAM_COND_NAMED(debug, "mission_planner", "FOUND SOLUTION");
+      ROS_WARN_STREAM_COND_NAMED(core_debug, "mission_planner", "FOUND SOLUTION");
       flag_useImmidiate = false;
       visualization_msgs::MarkerArray rrt_marker;
       rrt_marker.markers.resize(2);
       path_planner->getSolutionMarker(rrt_marker.markers[0], "rrt_trajectory_markers", 0);
       path_planner->getTreeMarker(rrt_marker.markers[1], "rrt_trajectory_markers", 1);
+
+      rrt_marker.markers[0].header.frame_id = "map";
+      rrt_marker.markers[1].header.frame_id = "map";
+
       if (rrt_marker.markers[0].points.size() > 0)
         rrt_planner_pub.publish(rrt_marker);
 
@@ -744,8 +782,12 @@ void MissionController::spin()
 
     if (current_time > ros::Duration(5).toSec() && running_allow && !running_hold)
     {
+      ROS_INFO("PUBLISHING");
       visualization_msgs::MarkerArray sol_traj_marker;
       path_planner->getTrajectoryMarkers(sol_traj_marker);
+
+      sol_traj_marker.markers[0].header.frame_id = "map";
+      sol_traj_marker.markers[1].header.frame_id = "map";
 
       current_traj_pub.publish(sol_traj_marker);
 

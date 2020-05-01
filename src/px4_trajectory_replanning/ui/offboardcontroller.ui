@@ -320,6 +320,19 @@
        <string>Save Param</string>
       </property>
      </widget>
+     <widget class="QPushButton" name="mission_rrt_reset_param">
+      <property name="geometry">
+       <rect>
+        <x>240</x>
+        <y>30</y>
+        <width>89</width>
+        <height>25</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Reset</string>
+      </property>
+     </widget>
     </widget>
    </widget>
    <widget class="QGroupBox" name="groupBox_2">

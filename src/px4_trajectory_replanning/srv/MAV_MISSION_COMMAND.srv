@@ -3,6 +3,8 @@
 #uint8 MAV_MISSION_STOP = 1
 #uint8 MAV_MISSION_HOLD = 2
 
+std_msgs/Header header
+
 # Mission Command from UI using MissionCMD
 uint8 mission_command
 
@@ -16,6 +18,7 @@ bool save
 # Parameter
 bool request_param
 bool set_param
+bool reset_param
 ---
 bool response
 Configuration config

@@ -1,8 +1,11 @@
 <launch>
 
     <arg name="vehicle" default="iris"/>
+    <arg name="model" value="iris_depth_camera" />
+    <arg name="urdf" default="$(find px4_simulation)/models/$(arg vehicle)/$(arg vehicle).urdf.xacro"/>
 
-    <include file="$(find px4_simulation)/launch/px4_mavros_sitl.launch">
+    <env name="GAZEBO_MODEL_PATH" value="$(find mavlink_sitl_gazebo)/models"/>
+    <include file="$(find px4)/launch/mavros_posix_sitl.launch">
         <arg name="x" value="-15.0"/>
         <arg name="y" value="15.0"/>
         <arg name="z" value="0"/>
@@ -11,5 +14,15 @@
         <arg name="Y" value="0"/>
         <arg name="vehicle" value="$(arg vehicle)"/>
         <arg name="world" value="$(find px4_simulation)/worlds/cones.world"/>
+        <arg name="sdf" default="$(find mavlink_sitl_gazebo)/models/$(arg model)/$(arg model).sdf"/>
+
     </include>
+
+    <!-- Convert an xacro and put on parameter server -->
+    <param name="robot_description" command="$(find xacro)/xacro --inorder '$(arg urdf)'" />
+    <!-- <param name="robot_description" command="$(find xacro)/xacro.py $(find px4_simulation)/models/$(arg vehicle)/$(arg vehicle).urdf.xacro" /> -->
+    <!-- Spawn a robot into Gazebo -->
+    <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" />
+    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher" />
+
 </launch>

@@ -16,6 +16,8 @@
 
 #include <ros/ros.h>
 #include <ros/package.h>
+#include <ros/callback_queue.h>
+#include <ros/spinner.h>
 #include <std_srvs/Empty.h>
 #include <sensor_msgs/Image.h>
 #include <cv_bridge/cv_bridge.h>
@@ -64,6 +66,7 @@ void saveParam();
 void init();
 void missionWaypoint();
 
+void queueThread();
 bool missionCommandParam(px4_trajectory_replanning::MAV_MISSION_COMMAND::Request &req,
                      px4_trajectory_replanning::MAV_MISSION_COMMAND::Response &res);
 void depthImageCallback(const sensor_msgs::Image::ConstPtr& msg);
@@ -77,18 +80,19 @@ int init_argc_;
 char** init_argv_;
 ros::NodeHandle nh_;
 
-int mission_state;
+int mission_state, prev_mission_state;
 bool running_allow;
 bool running_hold;
-bool debug;
+bool core_debug, process_debug;
 bool initialized;
 bool mission_use_wp;
 bool gazebo_sim;
 std::string mission_map;
 bool new_wp_initialized;
 
-boost::thread *main_thread_;
+boost::thread queue_thread;
 boost::mutex mutex;
+ros::CallbackQueue callback_queue;
 
 ros::Publisher rrt_planner_pub, occ_marker_pub, free_marker_pub, dist_marker_pub, trajectory_pub, current_traj_pub, command_pt_pub, command_pt_viz_pub;
 ros::Publisher traj_marker_pub, traj_checker_pub;

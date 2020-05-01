@@ -42,6 +42,8 @@ public slots:
   void on_mission_rrt_start_pressed();
   void on_mission_rrt_hold_pressed();
   void on_mission_rrt_stop_pressed();
+  void on_mission_rrt_reset_param_pressed();
+
 
 signals:
   void requestControllerCommand(ReqControllerCMD req);

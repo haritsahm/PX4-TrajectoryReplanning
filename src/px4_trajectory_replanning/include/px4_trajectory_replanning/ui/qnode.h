@@ -6,9 +6,12 @@
 #include <QThread>
 #include <stdio.h>
 #include <string>
+#include <boost/thread.hpp>
 
 #include <ros/ros.h>
 #include <ros/package.h>
+#include <ros/callback_queue.h>
+#include <ros/spinner.h>
 #include <px4_trajectory_replanning/GetMAV_STATE.h>
 #include <px4_trajectory_replanning/MAV_CONTROLLER_COMMAND.h>
 #include <px4_trajectory_replanning/MAV_MISSION_COMMAND.h>
@@ -46,7 +49,8 @@ enum ReqMissionCMD{
   REQ_MISSION_SET_PARAM=62,
   REQ_MISSION_START=63,
   REQ_MISSION_STOP=64,
-  REQ_MISSION_HOLD=65
+  REQ_MISSION_HOLD=65,
+  REQ_MISSION_RESET_PARAM=66
 };
 
 struct Parameter
@@ -68,6 +72,7 @@ public:
   bool init();
   void run();
   void getParam();
+  void queueThread();
 
 public slots:
   void sendingControllerCommand(ReqControllerCMD req);
@@ -82,6 +87,7 @@ private:
   int init_argc_;
   char** init_argv_;
   bool debug_;
+  boost::thread queue_thread;
 
   ros::ServiceClient get_mavstate_client, request_command_client;
   ros::ServiceClient mission_command_client, mission_command_param_client;

@@ -200,6 +200,14 @@ void OffboardController::on_mission_rrt_get_param_pressed()
   emit requestMissionCommand(param);
 }
 
+void OffboardController::on_mission_rrt_reset_param_pressed()
+{
+  Parameter param;
+  param.mission_req = REQ_MISSION_RESET_PARAM;
+
+  emit requestMissionCommand(param);
+}
+
 void OffboardController::on_mission_rrt_set_param_pressed()
 {
   Parameter param;
