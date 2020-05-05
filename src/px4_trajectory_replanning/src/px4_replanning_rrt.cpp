@@ -48,26 +48,26 @@ void MissionController::init()
   config_path = ros::package::getPath("px4_trajectory_replanning") + "/config/config.yaml";
   loadParam(config_path);
 
-  occ_marker_pub = nh_.advertise<visualization_msgs::Marker>("ring_buffer/occupied", 5);
-  free_marker_pub = nh_.advertise<visualization_msgs::Marker>("ring_buffer/free", 5);
-  dist_marker_pub = nh_.advertise<visualization_msgs::Marker>("ring_buffer/distance", 5);
-  trajectory_pub = nh_.advertise<geometry_msgs::Point>("trajectory/command/point", 50);
-  current_traj_pub = nh_.advertise<visualization_msgs::MarkerArray>("trajectory/optimal_trajectory", 50, true);
-  rrt_planner_pub = nh_.advertise<visualization_msgs::MarkerArray>("trajectory/rrt_trajectory", 50, true);
+  occ_marker_pub = nh_.advertise<visualization_msgs::Marker>("ring_buffer/occupied", 50);
+  free_marker_pub = nh_.advertise<visualization_msgs::Marker>("ring_buffer/free", 50);
+  dist_marker_pub = nh_.advertise<visualization_msgs::Marker>("ring_buffer/distance", 50);
+  trajectory_pub = nh_.advertise<geometry_msgs::Point>("trajectory/command/point", 100);
+  current_traj_pub = nh_.advertise<visualization_msgs::MarkerArray>("trajectory/optimal_trajectory", 100, true);
+  rrt_planner_pub = nh_.advertise<visualization_msgs::MarkerArray>("trajectory/rrt_trajectory", 100, true);
 
-  traj_marker_pub = nh_.advertise<visualization_msgs::MarkerArray>("trajectory/global_trajectory", 50, true);
-  traj_checker_pub = nh_.advertise<visualization_msgs::Marker>("trajectory/checker_trajectory", 50, true);
+  traj_marker_pub = nh_.advertise<visualization_msgs::MarkerArray>("trajectory/global_trajectory", 100, true);
+  traj_checker_pub = nh_.advertise<visualization_msgs::Marker>("trajectory/checker_trajectory", 100, true);
 
   mission_command_server =
       nh_.advertiseService("controllers/mission_command_param", &MissionController::missionCommandParam, this);
   mission_controller_cmd_client =
   nh_.serviceClient<px4_trajectory_replanning::POS_CONTROLLER_COMMAND>("controllers/mission_controller_cmd");
 
-  camera_info_sub_ = nh_.subscribe("/camera/depth/camera_info", 50, &MissionController::cameraInfoCallback, this);
+  camera_info_sub_ = nh_.subscribe("/camera/depth/camera_info", 100, &MissionController::cameraInfoCallback, this);
   //   message_filters::Subscriber<sensor_msgs::Image> depth_image_sub_;
 
-  depth_image_sub_.subscribe(nh_, "/camera/depth/image_raw", 50);
-  tf_filter_ = new tf::MessageFilter<sensor_msgs::Image>(depth_image_sub_, listener, "map", 50);
+  depth_image_sub_.subscribe(nh_, "/camera/depth/image_raw", 100);
+  tf_filter_ = new tf::MessageFilter<sensor_msgs::Image>(depth_image_sub_, listener, "map", 100);
   tf_filter_->registerCallback(boost::bind(&MissionController::depthImageCallback, this, _1));
 
   // queue_thread = boost::thread(boost::bind(&MissionController::queueThread, this));
@@ -112,12 +112,8 @@ void MissionController::queueThread()
 
   mission_command_server =
       node_handle.advertiseService("controllers/mission_command_param", &MissionController::missionCommandParam, this);
-  mission_controller_cmd_client = node_handle.serviceClient<px4_trajectory_replanning::POS_CONTROLLER_COMMAND>("control"
-                                                                                                               "lers/"
-                                                                                                               "mission"
-                                                                                                               "_contro"
-                                                                                                               "ller_"
-                                                                                                               "cmd");
+  mission_controller_cmd_client = 
+      node_handle.serviceClient<px4_trajectory_replanning::POS_CONTROLLER_COMMAND>("controllers/mission_controller_cmd");
 
   ros::WallDuration duration(0.001);
   while (node_handle.ok())
@@ -489,12 +485,13 @@ void MissionController::spin()
   std::list<Eigen::Vector3d> ctrl_points_;
   std::vector<Eigen::Vector3f> obs_points;
   std::vector<bool> prev_ctrl_pts_bool;
-  ros::Rate r(1 / dt);
+  ros::Rate r(20);
 
   Eigen::Vector3f pt_hold, point_prev, point_next, last_point;
 
   while (ros::ok())
   {
+    ros::Time begin = ros::Time::now();
     if (new_wp_initialized)
     {
       hold_counter = time_start = time_stop = current_time = 0;
@@ -801,6 +798,9 @@ void MissionController::spin()
 
       path_planner->addLastControlPoint();
     }
+
+    // ros::Duration dur = ros::Time::now()-begin;
+    // ROS_INFO_STREAM(" Time Elapsed " << dur.toSec());
 
     r.sleep();
     ros::spinOnce();

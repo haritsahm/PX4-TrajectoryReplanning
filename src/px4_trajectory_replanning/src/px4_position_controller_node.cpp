@@ -313,7 +313,7 @@ void MotionController::followBSpline()
 
 void MotionController::spin()
 {
-  ros::Rate rate(1/0.01);
+  ros::Rate rate(20);
   controller_ready = true;
 
   while(ros::ok())

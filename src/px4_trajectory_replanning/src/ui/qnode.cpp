@@ -226,7 +226,7 @@ void QNode::sendingMissionCommand(Parameter param)
 
 void QNode::run()
 {
-  ros::Rate loop_rate(10);
+  ros::Rate loop_rate(20);
 
   while (ros::ok())
   {
