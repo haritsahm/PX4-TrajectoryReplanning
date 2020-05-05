@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="px4_trajectory_replanning" type="px4_interface_node" name="px4_controller_node" output="screen" />
+</launch>
