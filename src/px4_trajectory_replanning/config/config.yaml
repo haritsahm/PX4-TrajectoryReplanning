@@ -6,7 +6,7 @@ path_planning:
   step_size: 0.5
   rrt_factor: 1.5
   max_solve_t: 1
-  uav_radius: 1.0
+  uav_radius: 0.6
   num_iter: 5000
   num_pt_window: 4
   clear_distance: 1.2

@@ -74,7 +74,7 @@ catkin_simple()
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 
-cs_add_executable(px4_replanning_rrt_node src/px4_replanning_rrt.cpp)
+cs_add_executable(px4_trajectory_controller_node src/px4_trajectory_controller.cpp)
 cs_add_executable(px4_mavros_controller_node src/px4_mavros_controller.cpp)
 cs_add_executable(px4_position_controller_node src/px4_position_controller_node.cpp)
 cs_add_executable(px4_interface_node ${controller_SRCS} ${controller_MOCS} ${controller_UIS_H})
@@ -83,7 +83,7 @@ cs_add_executable(px4_interface_node ${controller_SRCS} ${controller_MOCS} ${con
 #add_dependencies(${PROJECT_NAME}_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-target_link_libraries(px4_replanning_rrt_node ${CHOLMOD_LIBRARY} ${Eigen3_LIBS} nlopt Boost::thread Boost::chrono ${YAML_CPP_LIBRARIES})
+target_link_libraries(px4_trajectory_controller_node ${CHOLMOD_LIBRARY} ${Eigen3_LIBS} nlopt Boost::thread Boost::chrono ${YAML_CPP_LIBRARIES})
 target_link_libraries(px4_position_controller_node ${CHOLMOD_LIBRARY} Eigen3::Eigen nlopt Boost::thread Boost::chrono ${YAML_CPP_LIBRARIES})
 target_link_libraries(px4_interface_node Boost::thread Boost::chrono Qt5::Widgets Qt5::Gui Qt5::Core ${YAML_CPP_LIBRARIES})
 

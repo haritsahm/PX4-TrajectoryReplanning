@@ -90,7 +90,7 @@ private:
   boost::thread queue_thread;
 
   ros::ServiceClient get_mavstate_client, request_command_client;
-  ros::ServiceClient mission_command_client, mission_command_param_client;
+  ros::ServiceClient mission_command_client, mission_pos_cmd_client;
   px4_trajectory_replanning::Configuration config;
 
 

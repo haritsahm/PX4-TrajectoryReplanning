@@ -1,5 +1,5 @@
-#ifndef PX4_MISSION_CONTROLLER_H
-#define PX4_MISSION_CONTROLLER_H
+#ifndef PX4_TRAJECTORY_CONTROLLER_H
+#define PX4_TRAJECTORY_CONTROLLER_H
 
 #include <thread>
 #include <boost/thread.hpp>
@@ -25,6 +25,7 @@
 #include <tf_conversions/tf_eigen.h>
 #include <tf/message_filter.h>
 #include <sensor_msgs/CameraInfo.h>
+#include <image_transport/image_transport.h>
 #include <message_filters/subscriber.h>
 #include <mav_msgs/conversions.h>
 #include <mav_msgs/default_topics.h>
@@ -42,8 +43,6 @@
 #include <ewok/uniform_bspline_3d.h>
 #include <ewok/rrtstar3d.h>
 
-const int POW = 6;
-
 template <typename T>
 std::ostream& operator<<(std::ostream& out, const Eigen::Vector3d& v)
 {
@@ -53,11 +52,11 @@ std::ostream& operator<<(std::ostream& out, const Eigen::Vector3d& v)
   return out;
 }
 
-class MissionController
+class TrajectoryController
 {
 public:
 
-MissionController(ros::NodeHandle & nh);
+TrajectoryController(ros::NodeHandle & nh);
 
 void spin();
 void loadParam(const std::string path);
@@ -101,6 +100,7 @@ ros::ServiceClient mission_controller_cmd_client;
 ros::Subscriber camera_info_sub_;
 message_filters::Subscriber<sensor_msgs::Image> depth_image_sub_;
 tf::TransformListener listener;
+image_transport::Subscriber sub_image;
 tf::MessageFilter<sensor_msgs::Image> * tf_filter_;
 sensor_msgs::CameraInfo camera_info_msg_;
 visualization_msgs::Marker traj_checker_marker;
@@ -111,9 +111,9 @@ px4_trajectory_replanning::Configuration config;
 std::string config_path;
 YAML::Node mission_config;
 
-ewok::PolynomialTrajectory3D<10>::Ptr traj;
-ewok::EuclideanDistanceRingBuffer<POW>::Ptr edrb;
-ewok::RRTStar3D<POW>::Ptr path_planner;
+ewok::PolynomialTrajectory3D<10, double>::Ptr traj;
+ewok::EuclideanDistanceRingBuffer<6, int16_t, double>::Ptr edrb;
+ewok::RRTStar3D<6, double>::Ptr path_planner;
 
 };
 

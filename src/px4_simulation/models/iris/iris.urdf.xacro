@@ -5,6 +5,7 @@
 
   <!-- <xacro:include filename="$(find px4_simulation)/models/iris/iris_gazebo.xacro" /> -->
   <xacro:include filename="$(find px4_simulation)/models/sensors/depth_camera.xacro" />
+  
   <link name="base_link">
     <inertial>
       <mass value="1.5"/>

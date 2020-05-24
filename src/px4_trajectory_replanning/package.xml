@@ -75,6 +75,8 @@
   <build_depend>tf_conversions</build_depend>
   <build_depend>eigen_conversions</build_depend>
   <build_depend>cv_bridge</build_depend>
+  <build_depend>image_transport</build_depend>
+
 
   <!-- The export tag contains other, unspecified, tags -->
   <export>
