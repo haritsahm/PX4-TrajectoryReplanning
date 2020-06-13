@@ -30,7 +30,7 @@ TrajectoryController::TrajectoryController(ros::NodeHandle& nh)
   , initialized(false)
   , mission_state(POSControllerCMD::POS_CMD_MISSION_HOLD)
   , prev_mission_state(99)
-  , core_debug(true)
+  , core_debug(false)
   , process_debug(true)
   , gazebo_sim(true)
   , new_wp_initialized(false)
@@ -50,22 +50,25 @@ void TrajectoryController::init()
 
   occ_marker_pub = nh_.advertise<visualization_msgs::Marker>("ring_buffer/occupied", 50);
   free_marker_pub = nh_.advertise<visualization_msgs::Marker>("ring_buffer/free", 50);
-  dist_marker_pub = nh_.advertise<visualization_msgs::Marker>("ring_buffer/distance", 50);
   trajectory_pub = nh_.advertise<geometry_msgs::Point>("trajectory/command/point", 50);
   current_traj_pub = nh_.advertise<visualization_msgs::MarkerArray>("trajectory/optimal_trajectory", 50, true);
-  rrt_planner_pub = nh_.advertise<visualization_msgs::MarkerArray>("trajectory/rrt_trajectory", 50, true);
+
+  rrt_tree_pub = nh_.advertise<visualization_msgs::Marker>("trajectory/rrt_tree", 1, true);
+  rrt_solution_pub = nh_.advertise<visualization_msgs::Marker>("trajectory/rrt_solution", 1, true);
+  rrt_property_pub = nh_.advertise<visualization_msgs::MarkerArray>("trajectory/rrt_property", 1, true);
 
   traj_marker_pub = nh_.advertise<visualization_msgs::MarkerArray>("trajectory/global_trajectory", 50, true);
   traj_checker_pub = nh_.advertise<visualization_msgs::Marker>("trajectory/checker_trajectory", 50, true);
 
   image_transport::ImageTransport it(nh_);
-  sub_image = it.subscribe("/camera/depth/image_raw", 50, &TrajectoryController::depthImageCallback, this);
+  sub_image = it.subscribe("/camera/depth/image_raw", 100, &TrajectoryController::depthImageCallback, this);
   camera_info_sub_ = nh_.subscribe("/camera/depth/camera_info", 50, &TrajectoryController::cameraInfoCallback, this);
-  // message_filters::Subscriber<sensor_msgs::Image> depth_image_sub_;
+  robot_pos_subscriber = nh_.subscribe("/mavros/local_position/odom",10, &TrajectoryController::OdometryCallback, this);
+//   message_filters::Subscriber<sensor_msgs::Image> depth_image_sub_;
 
-  // depth_image_sub_.subscribe(nh_, "/camera/depth/image_raw", 100);
-  // tf_filter_ = new tf::MessageFilter<sensor_msgs::Image>(depth_image_sub_, listener, "map", 100);
-  // tf_filter_->registerCallback(boost::bind(&TrajectoryController::depthImageCallback, this, _1));
+//   depth_image_sub_.subscribe(nh_, "/camera/depth/image_raw", 100);
+//   tf_filter_ = new tf::MessageFilter<sensor_msgs::Image>(depth_image_sub_, listener, "map", 100);
+//   tf_filter_->registerCallback(boost::bind(&TrajectoryController::depthImageCallback, this, _1));
 
   queue_thread = boost::thread(boost::bind(&TrajectoryController::queueThread, this));
 
@@ -91,7 +94,7 @@ void TrajectoryController::init()
   edrb.reset(new ewok::EuclideanDistanceRingBuffer<6, int16_t, double>(config.resolution, 1.0));
 
   path_planner.reset(
-      new ewok::RRTStar3D<6, double>(config.step_size, config.rrt_factor, config.uav_radius, config.max_solve_t, dt));
+        new ewok::RRTStar3D<6, double>(config.step_size, config.rrt_factor, config.uav_radius, config.max_solve_t, dt));
   path_planner->setDistanceBuffer(edrb);
 
   // Starting thread
@@ -105,10 +108,10 @@ void TrajectoryController::queueThread()
   node_handle.setCallbackQueue(&callback_queue);
 
   mission_command_server =
-  node_handle.advertiseService("controllers/mission_command_param", &TrajectoryController::missionCommandParam, this);
-  mission_controller_cmd_client = 
-  node_handle.serviceClient<px4_trajectory_replanning::POS_CONTROLLER_COMMAND>
-  ("controllers/mission_controller_cmd");
+      node_handle.advertiseService("controllers/mission_command_param", &TrajectoryController::missionCommandParam, this);
+  mission_controller_cmd_client =
+      node_handle.serviceClient<px4_trajectory_replanning::POS_CONTROLLER_COMMAND>
+      ("controllers/mission_controller_cmd");
 
   ros::WallDuration duration(0.01);
   while (node_handle.ok())
@@ -116,7 +119,7 @@ void TrajectoryController::queueThread()
 }
 
 bool TrajectoryController::missionCommandParam(px4_trajectory_replanning::MAV_MISSION_COMMAND::Request& req,
-                                            px4_trajectory_replanning::MAV_MISSION_COMMAND::Response& res)
+                                               px4_trajectory_replanning::MAV_MISSION_COMMAND::Response& res)
 {
   if (req.header.frame_id == "UI Interface")
   {
@@ -146,9 +149,9 @@ bool TrajectoryController::missionCommandParam(px4_trajectory_replanning::MAV_MI
   {
     running_allow = req.allowed;
     if (running_allow)
-      {
-        new_wp_initialized = true;
-        ROS_WARN("Mission allowed run");}
+    {
+      new_wp_initialized = true;
+      ROS_WARN("Mission allowed run");}
     else
       ROS_WARN("Mission disabled");
   }
@@ -255,7 +258,7 @@ void TrajectoryController::depthImageCallback(const sensor_msgs::Image::ConstPtr
   tf::StampedTransform transform;
   try
   {
-    listener.lookupTransform("map", msg->header.frame_id, msg->header.stamp, transform);
+    listener.lookupTransform("map", msg->header.frame_id, ros::Time(0), transform);
   }
   catch (tf::TransformException& ex)
   {
@@ -353,8 +356,6 @@ void TrajectoryController::missionWaypoint()
 
   ROS_INFO_STREAM("Started hovering with parameters: start " << start << " middle " << middle << " stop " << stop);
 
-  ROS_INFO("dt: %f, num_opt_points: %d", dt, config.num_opt_points);
-
   /**
    * Generate Original Spline Trajectory
    */
@@ -375,6 +376,10 @@ void TrajectoryController::missionWaypoint()
 
     visualization_msgs::MarkerArray traj_marker;
     traj->getVisualizationMarkerArray(traj_marker, "gt", Eigen::Vector3d(1, 0, 1));
+    for(auto marker: traj_marker.markers)
+    {
+      marker.lifetime = ros::Duration(0);
+    }
     traj_marker_pub.publish(traj_marker);
   }
 
@@ -385,7 +390,6 @@ void TrajectoryController::missionWaypoint()
     path_planner->addControlPoint(start);
   }
 
-  path_planner->setNumControlPointsOptimized(config.num_opt_points);
   path_planner->setHeight(start);
 
   geometry_msgs::Point p;
@@ -394,6 +398,118 @@ void TrajectoryController::missionWaypoint()
   p.z = start.z();
 
   trajectory_pub.publish(p);
+}
+
+void TrajectoryController::OdometryCallback(const nav_msgs::OdometryConstPtr& odometry_msg)
+{
+  Eigen::Affine3d base_link;
+  geometry_msgs::Pose pose = odometry_msg->pose.pose;
+  tf::poseMsgToEigen(pose, base_link);
+  path_planner->setRobotPos(base_link.translation());
+  path_planner->setRobotPose(base_link);
+}
+
+void TrajectoryController::RRTPublisher(const ros::TimerEvent& event)
+{
+  if(path_planner->isRunning())
+  {
+    ROS_INFO_COND(core_debug, "Publish RRT Visualizer");
+    visualization_msgs::Marker rrt_tree_marker, rrt_solution_marker;
+    visualization_msgs::MarkerArray rrt_property_marker;
+    path_planner->getTreeMarker(rrt_tree_marker, "rrt_tree_marker", 1);
+    rrt_tree_marker.header.frame_id = "map";
+    if(path_planner->RRTVisualize())
+    {
+      path_planner->getSolutionMarker(rrt_solution_marker, "rrt_solution_markers", 0, Eigen::Vector3f(0,0,1), 0.05);
+      rrt_solution_marker.header.frame_id = "map";
+      if(rrt_solution_marker.points.size() > 0)
+        rrt_solution_pub.publish(rrt_solution_marker);
+    }
+
+    if (rrt_tree_marker.points.size() > 0)
+      rrt_tree_pub.publish(rrt_tree_marker);
+
+    rrt_property_marker.markers.resize(2);
+    if(path_planner->solutionFound())
+    {
+      path_planner->getRRTProperty(rrt_property_marker.markers[0], "rrt_property_marker", 0, Eigen::Vector4f(1,1,1,0.4));
+    }
+
+    path_planner->getRRTProperty(rrt_property_marker.markers[1], "rrt_state_marker", 1, Eigen::Vector4f(1,0.5,0,0.6));
+    rrt_property_marker.markers[0].header.frame_id = "map";
+    rrt_property_marker.markers[1].header.frame_id = "map";
+    rrt_property_pub.publish(rrt_property_marker);
+
+  }
+}
+
+void TrajectoryController::RRTProcess(const ros::TimerEvent& event)
+{
+  if(new_wp_initialized)
+  {
+    missionWaypoint();
+    new_wp_initialized = false;
+  }
+
+  if (mission_state != prev_mission_state)
+  {
+    switch (mission_state)
+    {
+    case POSControllerCMD::POS_CMD_MISSION_STOP:
+    {
+      ROS_DEBUG_STREAM_COND_NAMED(process_debug, "mission_planner", "Mission Command to STOP");
+      running_allow = false;
+      running_hold = true;
+      break;
+    }
+    case POSControllerCMD::POS_CMD_MISSION_HOLD:
+    {
+      ROS_DEBUG_STREAM_COND_NAMED(process_debug, "mission_planner", "Mission Command to HOLD");
+      running_hold = true;
+      break;
+    }
+    case POSControllerCMD::POS_CMD_MISSION_START:
+    {
+      ROS_DEBUG_STREAM_COND_NAMED(process_debug, "mission_planner", "Mission Command to START");
+      running_allow = true;
+      running_hold = false;
+      break;
+    }
+    }
+  }
+  prev_mission_state = mission_state;
+
+  if (running_allow && !running_hold)
+  {  // process rrt
+    ROS_INFO_COND(core_debug, "Process Trajectory - RRT");
+    path_planner->process();
+
+    // get trajectory checker
+    ROS_INFO_COND(core_debug, "Publish Trajectory Checker");
+    path_planner->TrajectoryChecker(traj_checker_marker, "map");
+    traj_checker_pub.publish(traj_checker_marker);
+
+    ROS_INFO_COND(core_debug, "Publish Path Visualizer");
+    visualization_msgs::MarkerArray sol_traj_marker;
+    path_planner->getTrajectoryMarkers(sol_traj_marker, "spline_opitimization_markers", Eigen::Vector3d(0, 1, 0),
+                                       Eigen::Vector3d(0, 1, 1));
+    sol_traj_marker.markers[0].header.frame_id = "map";
+    sol_traj_marker.markers[1].header.frame_id = "map";
+    current_traj_pub.publish(sol_traj_marker);
+
+    ROS_INFO_COND(core_debug, "Publish Command");
+
+    Eigen::Vector3d pc;
+    if(path_planner->getNextPt(pc))
+    {
+      ROS_INFO_COND(core_debug, "Publish Command");
+      geometry_msgs::Point pp;
+      pp.x = pc.x();
+      pp.y = pc.y();
+      pp.z = pc.z();
+      trajectory_pub.publish(pp);
+    }
+  }
 }
 
 void TrajectoryController::spin()
@@ -441,121 +557,124 @@ void TrajectoryController::spin()
     ros::Duration(5.0).sleep();
   }
 
-  ROS_INFO("Ready to Run");
-  ros::Time starting = ros::Time::now();
+//  ROS_INFO("Ready to Run");
+//  ros::Time starting = ros::Time::now();
 
-  tf::TransformListener body_listener;
-  ros::Rate r(1 / dt);
+//  tf::TransformListener body_listener;
+//  ros::Rate r(1 / dt);
 
-  while (ros::ok())
-  {
-    if(new_wp_initialized)
-    {
-        missionWaypoint();
-        new_wp_initialized = false;
-    }
+  ros::Timer rrt_process_timer = nh_.createTimer(ros::Duration(dt), &TrajectoryController::RRTProcess, this);
+  ros::Timer rrt_visualizer_timer = nh_.createTimer(ros::Duration(0.002), &TrajectoryController::RRTPublisher, this);
+  ros::spin();
+//  while (ros::ok())
+//  {
+//    if(new_wp_initialized)
+//    {
+//      missionWaypoint();
+//      new_wp_initialized = false;
+//    }
 
-    if (mission_state != prev_mission_state)
-    {
-      switch (mission_state)
-      {
-        case POSControllerCMD::POS_CMD_MISSION_STOP:
-        {
-          ROS_DEBUG_STREAM_COND_NAMED(process_debug, "mission_planner", "Mission Command to STOP");
-          running_allow = false;
-          running_hold = true;
-          break;
-        }
-        case POSControllerCMD::POS_CMD_MISSION_HOLD:
-        {
-          ROS_DEBUG_STREAM_COND_NAMED(process_debug, "mission_planner", "Mission Command to HOLD");
-          running_hold = true;
-          break;
-        }
-        case POSControllerCMD::POS_CMD_MISSION_START:
-        {
-          ROS_DEBUG_STREAM_COND_NAMED(process_debug, "mission_planner", "Mission Command to START");
-          running_allow = true;
-          running_hold = false;
-          break;
-        }
-      }
-    }
-    prev_mission_state = mission_state;
+//    if (mission_state != prev_mission_state)
+//    {
+//      switch (mission_state)
+//      {
+//      case POSControllerCMD::POS_CMD_MISSION_STOP:
+//      {
+//        ROS_DEBUG_STREAM_COND_NAMED(process_debug, "mission_planner", "Mission Command to STOP");
+//        running_allow = false;
+//        running_hold = true;
+//        break;
+//      }
+//      case POSControllerCMD::POS_CMD_MISSION_HOLD:
+//      {
+//        ROS_DEBUG_STREAM_COND_NAMED(process_debug, "mission_planner", "Mission Command to HOLD");
+//        running_hold = true;
+//        break;
+//      }
+//      case POSControllerCMD::POS_CMD_MISSION_START:
+//      {
+//        ROS_DEBUG_STREAM_COND_NAMED(process_debug, "mission_planner", "Mission Command to START");
+//        running_allow = true;
+//        running_hold = false;
+//        break;
+//      }
+//      }
+//    }
+//    prev_mission_state = mission_state;
 
-    tf::StampedTransform transform;
+//    tf::StampedTransform transform;
 
-    ROS_INFO("Looking transform");
-    try
-    {
-      body_listener.waitForTransform("map", "base_link", ros::Time(0), ros::Duration(1.0));
-      body_listener.lookupTransform("map", "base_link", ros::Time(0), transform);
-    }
-    catch (tf::TransformException& ex)
-    {
-      ROS_DEBUG_STREAM_COND_NAMED(core_debug, "mission_planner", "Couldn't get transform");
-      ROS_WARN("body %s", ex.what());
-    }
+//    ROS_INFO("Looking transform");
+//    try
+//    {
+//      body_listener.waitForTransform("map", "base_link", ros::Time(0), ros::Duration(1.0));
+//      body_listener.lookupTransform("map", "base_link", ros::Time(0), transform);
+//    }
+//    catch (tf::TransformException& ex)
+//    {
+//      ROS_DEBUG_STREAM_COND_NAMED(core_debug, "mission_planner", "Couldn't get transform");
+//      ROS_WARN("body %s", ex.what());
+//    }
 
-    // Update robot position
-    Eigen::Affine3d base_link;
-    tf::transformTFToEigen(transform, base_link);
+//    // Update robot position
+//    Eigen::Affine3d base_link;
+//    tf::transformTFToEigen(transform, base_link);
 
-    path_planner->setRobotPos(base_link.translation());
-    path_planner->setRobotPose(base_link);
+//    path_planner->setRobotPos(base_link.translation());
+//    path_planner->setRobotPose(base_link);
     
-    if (running_allow && !running_hold)
-    {  // process rrt
-      ROS_INFO_COND(core_debug, "Process Trajectory - RRT");
-      path_planner->process();
+//    if (running_allow && !running_hold)
+//    {  // process rrt
+//      ROS_INFO_COND(core_debug, "Process Trajectory - RRT");
+//      path_planner->process();
 
-      // get trajectory checker
-      ROS_INFO_COND(core_debug, "Publish Trajectory Checker");
-      path_planner->TrajectoryChecker(traj_checker_marker, "map");
-      traj_checker_pub.publish(traj_checker_marker);
+//      // get trajectory checker
+//      ROS_INFO_COND(core_debug, "Publish Trajectory Checker");
+//      path_planner->TrajectoryChecker(traj_checker_marker, "map");
+//      traj_checker_pub.publish(traj_checker_marker);
 
-      // Publish Path Visualizer
-      {
-        if (path_planner->RRTVisualize())
-        {
-          ROS_INFO_COND(core_debug, "Publish RRT Visualizer");
-          visualization_msgs::MarkerArray rrt_marker;
-          rrt_marker.markers.resize(2);
-          path_planner->getSolutionMarker(rrt_marker.markers[0], "rrt_trajectory_markers", 0);
-          path_planner->getTreeMarker(rrt_marker.markers[1], "rrt_trajectory_markers", 1);
-          rrt_marker.markers[0].header.frame_id = "map";
-          rrt_marker.markers[1].header.frame_id = "map";
-          if (rrt_marker.markers[0].points.size() > 0)
-            rrt_planner_pub.publish(rrt_marker);
+//      // Publish Path Visualizer
+//      {
+//        if (path_planner->RRTVisualize())
+//        {
+//          ROS_INFO_COND(core_debug, "Publish RRT Visualizer");
+//          visualization_msgs::MarkerArray rrt_marker;
+//          rrt_marker.markers.resize(2);
+//          path_planner->getSolutionMarker(rrt_marker.markers[0], "rrt_trajectory_markers", 0);
+//          path_planner->getTreeMarker(rrt_marker.markers[1], "rrt_trajectory_markers", 1);
+//          rrt_marker.markers[0].header.frame_id = "map";
+//          rrt_marker.markers[1].header.frame_id = "map";
+//          if (rrt_marker.markers[0].points.size() > 0)
+//            rrt_planner_pub.publish(rrt_marker);
 
-          path_planner->clearRRT();
-        }
-      }
+//          path_planner->clearRRT();
+//        }
+//      }
 
-      // Publish Command Point
-      if ((ros::Time::now() - starting).toSec() > ros::Duration(5).toSec())
-      {
-        ROS_INFO_COND(core_debug, "Publish Path Visualizer");
-        visualization_msgs::MarkerArray sol_traj_marker;
-        path_planner->getTrajectoryMarkers(sol_traj_marker, "spline_opitimization_markers", Eigen::Vector3d(0, 1, 0),
-                                           Eigen::Vector3d(0, 1, 1), true);
-        sol_traj_marker.markers[0].header.frame_id = "map";
-        sol_traj_marker.markers[1].header.frame_id = "map";
-        current_traj_pub.publish(sol_traj_marker);
+//      // Publish Command Point
+//      if ((ros::Time::now() - starting).toSec() > ros::Duration(5).toSec())
+//      {
+//        ROS_INFO_COND(core_debug, "Publish Path Visualizer");
+//        visualization_msgs::MarkerArray sol_traj_marker;
+//        path_planner->getTrajectoryMarkers(sol_traj_marker, "spline_opitimization_markers", Eigen::Vector3d(0, 1, 0),
+//                                           Eigen::Vector3d(0, 1, 1), true);
+//        sol_traj_marker.markers[0].header.frame_id = "map";
+//        sol_traj_marker.markers[1].header.frame_id = "map";
+//        current_traj_pub.publish(sol_traj_marker);
 
-        ROS_INFO_COND(core_debug, "Publish Command");
-        Eigen::Vector3d pc = path_planner->getNextPt();
-        geometry_msgs::Point pp;
-        pp.x = pc.x();
-        pp.y = pc.y();
-        pp.z = pc.z();
-        trajectory_pub.publish(pp);
-      }
-    }
+//        ROS_INFO_COND(core_debug, "Publish Command");
+//        Eigen::Vector3d pc = path_planner->getNextPt();
+//        geometry_msgs::Point pp;
+//        pp.x = pc.x();
+//        pp.y = pc.y();
+//        pp.z = pc.z();
+//        trajectory_pub.publish(pp);
+//      }
+//    }
 
-    r.sleep();
-    ros::spinOnce();
-  }
+//    r.sleep();
+//    ros::spinOnce();
+//  }
 
   ROS_INFO_STREAM("Finished");
 }

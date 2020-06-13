@@ -18,6 +18,7 @@
 #include <ros/package.h>
 #include <ros/callback_queue.h>
 #include <ros/spinner.h>
+#include <ros/time.h>
 #include <std_srvs/Empty.h>
 #include <sensor_msgs/Image.h>
 #include <cv_bridge/cv_bridge.h>
@@ -70,7 +71,9 @@ bool missionCommandParam(px4_trajectory_replanning::MAV_MISSION_COMMAND::Request
                      px4_trajectory_replanning::MAV_MISSION_COMMAND::Response &res);
 void depthImageCallback(const sensor_msgs::Image::ConstPtr& msg);
 void cameraInfoCallback(const sensor_msgs::CameraInfo & msg);
-
+void RRTPublisher(const ros::TimerEvent& event);
+void RRTProcess(const ros::TimerEvent& event);
+void OdometryCallback(const nav_msgs::OdometryConstPtr& odometry_msg);
 
 private:
 
@@ -93,11 +96,12 @@ boost::thread queue_thread;
 boost::mutex mutex;
 ros::CallbackQueue callback_queue;
 
-ros::Publisher rrt_planner_pub, occ_marker_pub, free_marker_pub, dist_marker_pub, trajectory_pub, current_traj_pub, command_pt_pub, command_pt_viz_pub;
+ros::Publisher occ_marker_pub, free_marker_pub, trajectory_pub, current_traj_pub, command_pt_pub, command_pt_viz_pub;
 ros::Publisher traj_marker_pub, traj_checker_pub;
+ros::Publisher rrt_property_pub, rrt_tree_pub, rrt_solution_pub;
 ros::ServiceServer mission_command_server;
 ros::ServiceClient mission_controller_cmd_client;
-ros::Subscriber camera_info_sub_;
+ros::Subscriber camera_info_sub_, robot_pos_subscriber;
 message_filters::Subscriber<sensor_msgs::Image> depth_image_sub_;
 tf::TransformListener listener;
 image_transport::Subscriber sub_image;
