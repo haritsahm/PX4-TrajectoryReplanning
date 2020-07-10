@@ -57,11 +57,9 @@ public:
                                                    px4_trajectory_replanning::GetPOS_CONTROLLER_STATE::Response &res);
     void PointCallback(const geometry_msgs::PointConstPtr & point_msg);
     void mavPosCallback(const geometry_msgs::PoseStamped& msg);
-    void OdometryCallback(const nav_msgs::OdometryConstPtr& odometry_msg);
     void mavtwistCallback(const geometry_msgs::TwistStamped& msg);
 
     void loadParam(std::string path);
-    void pubrefState();
     void pubRateCommands(const Eigen::Vector4d &cmd);
     void computeBodyRateCmd(Eigen::Vector4d &bodyrate_cmd);
     Eigen::Vector4d geometric_attcontroller(const Eigen::Vector4d &ref_att, const Eigen::Vector3d &ref_acc, Eigen::Vector4d &curr_att);
@@ -72,7 +70,6 @@ public:
     Eigen::Vector3d matrix_hat_inv(const Eigen::Matrix3d &m);
     void followTraj();
     void generateTraj(Eigen::Vector3d start, Eigen::Vector3d tar, Eigen::Vector4d limit);
-    void getTrajectoryPoint(double t, mav_msgs::EigenTrajectoryPoint& command_trajectory, bool & yaw_from_traj);
 
     void followBSpline();
     void spin();

@@ -5,7 +5,6 @@ MotionController::MotionController(ros::NodeHandle &nh) : nh_(nh)
   cmd_poly_sub_ = nh_.subscribe("trajectory/command/point", 10, &MotionController::PointCallback, this);
 
   position_sub_ = nh_.subscribe("/mavros/local_position/pose", 10, &MotionController::mavPosCallback, this);
-  odometry_sub_ = nh_.subscribe("/mavros/local_position/odom", 10, &MotionController::OdometryCallback, this);
   mavtwistSub_ = nh_.subscribe("/mavros/local_position/velocity_local", 1, &MotionController::mavtwistCallback, this,
                                ros::TransportHints().tcpNoDelay());
 
@@ -68,7 +67,7 @@ MotionController::MotionController(ros::NodeHandle &nh) : nh_(nh)
   targ_yaw = mav_msgs::yawFromQuaternion(mavAtt_);
 
   hold_stamp = ros::Time::now();
-  pubrefState();
+  pubRateCommands(Eigen::Vector4d(0,0,0,0.1));
   spin();
 }
 
@@ -140,6 +139,9 @@ bool MotionController::getControllerState(px4_trajectory_replanning::GetPOS_CONT
   return true;
 }
 
+/*
+ * Receiving Spline Setpoint to Reconstruct Bspline
+ */
 void MotionController::PointCallback(const geometry_msgs::PointConstPtr &point_msg)
 {
   ROS_INFO("PointCallback: %d points in spline", b_spline_->size());
@@ -151,6 +153,10 @@ void MotionController::PointCallback(const geometry_msgs::PointConstPtr &point_m
     b_spline_->push_back(p);
   }
 }
+
+/*
+ * Receiving UAV Position Estimation from Pixhawk via MavRos
+ */
 
 void MotionController::mavPosCallback(const geometry_msgs::PoseStamped &msg)
 {
@@ -167,38 +173,19 @@ void MotionController::mavPosCallback(const geometry_msgs::PoseStamped &msg)
   }
 }
 
+/*
+ * Receiving UAV Twist (Velocity) Estimation from Pixhawk via MavRos
+ */
+
 void MotionController::mavtwistCallback(const geometry_msgs::TwistStamped &msg)
 {
   geometry_msgs::Vector3 v3 = msg.twist.linear;
   mavVel_ = Eigen::Vector3d(v3.x, v3.y, v3.z);
 }
 
-void MotionController::OdometryCallback(const nav_msgs::OdometryConstPtr &odometry_msg)
-{
-  rotors_control::eigenOdometryFromMsg(odometry_msg, &odometry);
-}
-
-void MotionController::pubrefState()
-{
-  controller_msgs::FlatTarget msg;
-
-  msg.header.stamp = ros::Time::now();
-  msg.header.frame_id = "map";
-  msg.type_mask = 1;  //
-  msg.position.x = p_targ(0);
-  msg.position.y = p_targ(1);
-  msg.position.z = p_targ(2);
-  msg.velocity.x = v_targ(0);
-  msg.velocity.y = v_targ(1);
-  msg.velocity.z = v_targ(2);
-  msg.acceleration.x = a_targ(0);
-  msg.acceleration.y = a_targ(1);
-  msg.acceleration.z = a_targ(2);
-  msg.jerk.x = 0;
-  msg.jerk.y = 0;
-  msg.jerk.z = 0;
-  referencePub_.publish(msg);
-}
+/*
+ * Publish Calculated Rate to Pixhawk via MavRos
+ */
 
 void MotionController::pubRateCommands(const Eigen::Vector4d &cmd)
 {
@@ -214,6 +201,10 @@ void MotionController::pubRateCommands(const Eigen::Vector4d &cmd)
 
   bodyRatePub_.publish(msg);
 }
+
+/*
+ * Calculate Body Rate based on Differental Flatness
+ */
 
 void MotionController::computeBodyRateCmd(Eigen::Vector4d &bodyrate_cmd)
 {
@@ -237,9 +228,11 @@ void MotionController::computeBodyRateCmd(Eigen::Vector4d &bodyrate_cmd)
   Eigen::Vector4d mavAtt_4d = Eigen::Vector4d(mavAtt_.w(), mavAtt_.x(), mavAtt_.y(), mavAtt_.z());
   bodyrate_cmd = geometric_attcontroller(q_des, a_des, mavAtt_4d);  // Calculate BodyRate
 
-  // if (!yaw_from_traj)
-  // bodyrate_cmd.head(3) = Eigen::Vector3d(0, 0, zrate_targ);
 }
+
+/*
+ * Calculate Body Rate based
+ */
 
 Eigen::Vector4d MotionController::geometric_attcontroller(const Eigen::Vector4d &ref_att,
                                                           const Eigen::Vector3d &ref_acc, Eigen::Vector4d &curr_att)
@@ -379,42 +372,6 @@ void MotionController::generateTraj(Eigen::Vector3d start, Eigen::Vector3d tar, 
   vec.push_back(tar);
 
   traj = po.computeTrajectory(vec);
-}
-
-void MotionController::getTrajectoryPoint(double t, mav_msgs::EigenTrajectoryPoint &command_trajectory,
-                                          bool &yaw_from_traj)
-{
-  command_trajectory.position_W = b_spline_->evaluate(t, 0);
-  command_trajectory.velocity_W = b_spline_->evaluate(t, 1);
-  command_trajectory.acceleration_W = b_spline_->evaluate(t, 2);
-
-  static const double eps = 0.1;
-  static const double delta = 0.02;
-
-  Eigen::Vector3d d_t = b_spline_->evaluate(t + eps, 0) - command_trajectory.position_W;
-
-  yaw_from_traj = false;
-
-  if (std::abs(d_t[0]) > delta || std::abs(d_t[1]) > delta)
-  {
-    double yaw = std::atan2(d_t[1], d_t[0]);
-    yaw_from_traj = true;
-
-    command_trajectory.setFromYaw(yaw);
-
-    Eigen::Vector3d d_t_e = b_spline_->evaluate(t + 2 * eps, 0) - b_spline_->evaluate(t + eps, 0);
-
-    if (std::abs(d_t_e[0]) > delta || std::abs(d_t_e[1]) > delta)
-    {
-      double yaw_e = std::atan2(d_t_e[1], d_t_e[0]);
-      double yaw_rate = (yaw_e - yaw) / eps;
-      command_trajectory.setFromYawRate(yaw_rate);
-    }
-    else
-    {
-      command_trajectory.setFromYawRate(0);
-    }
-  }
 }
 
 void MotionController::followBSpline()

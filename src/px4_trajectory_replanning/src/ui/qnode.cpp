@@ -81,9 +81,11 @@ void QNode::getParam()
   if (get_mavstate_client.call(srv))
   {
     MavState state;
-    state.insert(std::pair<int, int>(QTOLState::QSTATE_OFFBOARD, BOOL2INT(srv.response.controller_state.offboard)));
-    state.insert(std::pair<int, int>(QTOLState::QSTATE_ROTOR, BOOL2INT(srv.response.controller_state.mav_state.armed)));
-    state.insert(std::pair<int, int>(QTOLState::QSTATE_TOL, srv.response.controller_state.tol_state));
+    state.offboard_state = srv.response.controller_state.offboard;
+    state.rotor_state = srv.response.controller_state.mav_state.armed;
+    state.tol_state = srv.response.controller_state.tol_state;
+    state.mode = QString::fromStdString(srv.response.controller_state.mav_state.mode);
+    state.system_status = QString::fromStdString(mav_state_key.at(srv.response.controller_state.mav_state.system_status));
     emit updateUI(state);
   }
   else

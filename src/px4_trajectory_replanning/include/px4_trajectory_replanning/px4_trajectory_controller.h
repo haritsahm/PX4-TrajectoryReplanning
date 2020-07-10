@@ -6,6 +6,10 @@
 #include <boost/bind.hpp>
 #include <mutex>
 #include <chrono>
+#include <ctime>   // localtime
+#include <sstream> // stringstream
+#include <iomanip> // put_time
+#include <string>  // string
 #include <map>
 #include <algorithm>
 #include <math.h>
@@ -112,7 +116,7 @@ std_msgs::ColorRGBA c_obs, c_free;
 
 
 px4_trajectory_replanning::Configuration config;
-std::string config_path;
+std::string config_path, log_path, file_name;
 YAML::Node mission_config;
 
 ewok::PolynomialTrajectory3D<10, double>::Ptr traj;

@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <string>
 #include <boost/thread.hpp>
+#include <map>
 
 #include <ros/ros.h>
 #include <ros/package.h>
@@ -23,7 +24,38 @@
 
 #define BOOL2INT(x) (x ? 1 : 0)
 
-typedef std::map<int, int> MavState;
+//std::map<int, std::string> mav_state_key;
+
+//mav_state_key.insert(std::make_pair(0, "MAV_STATE_UNINIT"));
+//mav_state_key.insert(std::make_pair(1, "MAV_STATE_BOOT"));
+//mav_state_key.insert(std::make_pair(2, "MAV_STATE_CALIBRATING"));
+//mav_state_key.insert(std::make_pair(3, "MAV_STATE_STANDBY"));
+//mav_state_key.insert(std::make_pair(4, "MAV_STATE_ACTIVE"));
+//mav_state_key.insert(std::make_pair(5, "MAV_STATE_CRITICAL"));
+//mav_state_key.insert(std::make_pair(6, "MAV_STATE_EMERGENCY"));
+//mav_state_key.insert(std::make_pair(7, "MAV_STATE_POWEROFF"));
+//mav_state_key.insert(std::make_pair(8, "MAV_STATE_FLIGHT_TERMINATION"));
+
+//mav_state_key[0] = "MAV_STATE_UNINIT";
+//mav_state_key[1] = "MAV_STATE_BOOT";
+//mav_state_key[2] = "MAV_STATE_CALIBRATING";
+//mav_state_key[3] = "MAV_STATE_STANDBY";
+//mav_state_key[4] = "MAV_STATE_ACTIVE";
+//mav_state_key[5] = "MAV_STATE_CRITICAL";
+//mav_state_key[6] = "MAV_STATE_EMERGENCY";
+//mav_state_key[7] = "MAV_STATE_POWEROFF";
+//mav_state_key[8] = "MAV_STATE_FLIGHT_TERMINATION";
+
+
+
+struct MavState
+{
+    bool offboard_state;
+    bool rotor_state;
+    bool tol_state;
+    QString mode;
+    QString system_status;
+};
 
 enum QTOLState{
   QTOL_STATE_LAND = 40,
@@ -73,6 +105,18 @@ public:
   void run();
   void getParam();
   void queueThread();
+
+  std::map<int, std::string> mav_state_key{
+      {0, "MAV_STATE_UNINIT"},
+      {1, "MAV_STATE_BOOT"},
+      {2, "MAV_STATE_CALIBRATING"},
+      {3, "MAV_STATE_STANDBY"},
+      {4, "MAV_STATE_ACTIVE"},
+      {5, "MAV_STATE_CRITICAL"},
+      {6, "MAV_STATE_EMERGENCY"},
+      {7, "MAV_STATE_POWEROFF"},
+      {8, "MAV_STATE_FLIGHT_TERMINATION"}
+  };
 
 public slots:
   void sendingControllerCommand(ReqControllerCMD req);

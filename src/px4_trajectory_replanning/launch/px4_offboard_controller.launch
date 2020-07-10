@@ -10,7 +10,7 @@
      <node pkg="rosbag" type="record" name="rosbag_record_standard_data" respawn="true" output="screen"
     args="  -o $(find px4_trajectory_replanning)/bags/ 
             /tf /mavros/state /joint_states /mavros/altitude
-            /mavros/setpoint_raw/attitude ring_buffer/occupied
+            /mavros/setpoint_raw/attitude /ring_buffer/occupied
             -e  '/mavros/local_position/(.*)'
                 '/mavros/imu/(.*)'
                 '/reference/(.*)'

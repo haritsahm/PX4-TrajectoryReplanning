@@ -162,7 +162,10 @@ int main(int argc, char **argv)
           {
             pos_cmd_srv.request.cmd_req = POSControllerCMD::POS_CMD_TAKEOFF;
             if (pos_controller_cmd_client.call(pos_cmd_srv))
-              ROS_DEBUG_STREAM_COND(debug, "MAVROS CONTROLLER : Request TOL to Takeoff");
+            {
+                ROS_DEBUG_STREAM_COND(debug, "MAVROS CONTROLLER : Request TOL to Takeoff");
+                tol_state = TOLState::TOL_STATE_TAKEOFF;
+            }
             else
               ROS_DEBUG_STREAM_COND(debug, "MAVROS CONTROLLER : Cant Call POS Command Service");
           }
@@ -178,7 +181,10 @@ int main(int argc, char **argv)
           {
             pos_cmd_srv.request.cmd_req = POSControllerCMD::POS_CMD_LAND;
             if (pos_controller_cmd_client.call(pos_cmd_srv))
-              ROS_DEBUG_STREAM_COND(debug, "MAVROS CONTROLLER : Request TOL to Land");
+            {
+                ROS_DEBUG_STREAM_COND(debug, "MAVROS CONTROLLER : Request TOL to Land");
+                tol_state = TOLState::TOL_STATE_LAND;
+            }
             else
               ROS_DEBUG_STREAM_COND(debug, "MAVROS CONTROLLER : Cant Call POS Command Service");
           }
