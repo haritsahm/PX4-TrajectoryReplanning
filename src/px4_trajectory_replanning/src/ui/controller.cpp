@@ -81,18 +81,13 @@ void OffboardController::setMavState(MavState state)
 
 void OffboardController::setMissionParam(px4_trajectory_replanning::Configuration config)
 {
-  ui->dspin_param_spline_maxvel->setValue(config.max_velocity);
-  ui->dspin_param_spline_accel->setValue(config.max_acceleration);
-  ui->dspin_param_spline_numpts->setValue(config.num_opt_points);
   ui->dspin_param_buff_res->setValue(config.resolution);
 
   ui->dspin_param_rrt_stepsize->setValue(config.step_size);
   ui->dspin_param_rrt_factor->setValue(config.rrt_factor);
   ui->dspin_param_rrt_solvt->setValue(config.max_solve_t);
-  ui->dspin_param_rrt_maxiter->setValue(config.num_iter);
   ui->dspin_param_rrt_uavrad->setValue(config.uav_radius);
 
-  ui->dspin_param_path_ptwindow->setValue(config.num_pt_window);
   ui->dspin_param_path_cleardist->setValue(config.clear_distance);
   ui->dspin_param_path_checkdist->setValue(config.max_check_dist);
 
@@ -195,18 +190,13 @@ void OffboardController::on_mission_rrt_reset_param_pressed()
 void OffboardController::on_mission_rrt_set_param_pressed()
 {
   Parameter param;
-  param.config.max_velocity = ui->dspin_param_spline_maxvel->value();
-  param.config.max_acceleration = ui->dspin_param_spline_accel->value();
-  param.config.num_opt_points = ui->dspin_param_spline_numpts->value();
   param.config.resolution =  ui->dspin_param_buff_res->value();
 
   param.config.step_size = ui->dspin_param_rrt_stepsize->value();
   param.config.rrt_factor = ui->dspin_param_rrt_factor->value();
   param.config.max_solve_t = ui->dspin_param_rrt_solvt->value();
-  param.config.num_iter = ui->dspin_param_rrt_maxiter->value();
   param.config.uav_radius = ui->dspin_param_rrt_uavrad->value();
 
-  param.config.num_pt_window = ui->dspin_param_path_ptwindow->value();
   param.config.clear_distance = ui->dspin_param_path_cleardist->value();
   param.config.max_check_dist = ui->dspin_param_path_checkdist->value();
 

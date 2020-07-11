@@ -167,25 +167,19 @@ void TrajectoryController::saveParam()
     ROS_ERROR("Fail to load yaml file.");
   }
 
-  YAML::Node node_pp = node["path_plnanning"];
-
-  node_pp["max_velocity"] = config.max_velocity;
-  node_pp["max_acceleration"] = config.max_acceleration;
+  YAML::Node node_pp = node["path_planning"];
   node_pp["resolution"] = config.resolution;
-  node_pp["num_opt_points"] = config.num_opt_points;
-
   node_pp["step_size"] = config.step_size;
   node_pp["rrt_factor"] = config.rrt_factor;
   node_pp["max_solve_t"] = config.max_solve_t;
   node_pp["uav_radius"] = config.uav_radius;
-  node_pp["num_iter"] = config.num_iter;
-
-  node_pp["num_pt_window"] = config.num_pt_window;
-  node_pp["clear_distance"] = config.clear_distance;
   node_pp["max_check_dist"] = config.max_check_dist;
+  node_pp["clear_distance"] = config.clear_distance;
+
+  node["path_planning"] = node_pp;
 
   std::ofstream fout(config_path.c_str());
-  fout << node_pp;
+  fout << node;
 }
 
 void TrajectoryController::loadParam(const std::string path)
@@ -204,20 +198,13 @@ void TrajectoryController::loadParam(const std::string path)
 
   YAML::Node node_pp = node["path_planning"];
 
-  config.max_velocity = node_pp["max_velocity"].as<float>();
-  config.max_acceleration = node_pp["max_acceleration"].as<float>();
   config.resolution = node_pp["resolution"].as<float>();
-  config.num_opt_points = node_pp["num_opt_points"].as<int>();
-
   config.step_size = node_pp["step_size"].as<float>();
   config.rrt_factor = node_pp["rrt_factor"].as<float>();
   config.max_solve_t = node_pp["max_solve_t"].as<float>();
   config.uav_radius = node_pp["uav_radius"].as<float>();
-  config.num_iter = node_pp["num_iter"].as<int>();
-
-  config.num_pt_window = node_pp["num_pt_window"].as<int>();
-  config.clear_distance = node_pp["clear_distance"].as<float>();
   config.max_check_dist = node_pp["max_check_dist"].as<float>();
+  config.clear_distance = node_pp["clear_distance"].as<float>();
 
   YAML::Node node_g = node["global"];
   dt = node_g["dt"].as<double>();
@@ -341,7 +328,7 @@ void TrajectoryController::depthImageCallback(const sensor_msgs::Image::ConstPtr
 
 void TrajectoryController::missionWaypoint()
 {
-  Eigen::Vector4d limits(config.max_velocity, config.max_acceleration, 0, 0);
+  Eigen::Vector4d limits(1, 1, 0, 0);
 
   Eigen::Vector3d start, middle, stop;
   start = mission_config[mission_map]["start"].as<Eigen::Vector3d>();
@@ -380,7 +367,7 @@ void TrajectoryController::missionWaypoint()
   path_planner->setPolynomialTrajectory(traj);
   path_planner->setLogPath(log_path+file_name, false); //save log
 
-  for (int i = 0; i < config.num_opt_points; i++)
+  for (int i = 0; i < 7; i++)
   {
     path_planner->addControlPoint(start);
   }
