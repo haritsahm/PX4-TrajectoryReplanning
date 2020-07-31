@@ -1,6 +1,3 @@
-[submodule "src/realsense-ros"]
-	path = src/realsense-ros
-	url = https://github.com/IntelRealSense/realsense-ros.git
 [submodule "src/catkin_simple"]
 	path = src/catkin_simple
 	url = https://github.com/catkin/catkin_simple

@@ -2,6 +2,8 @@
     <arg name="dt" value="0.5" />
     <arg name="num_opt_points" value="7" />
     <arg name="mission_type" default="cones" />
+    <arg name="save_log" default="false"/>
+    <arg name="flat_height" default="true"/>
 
     <arg name="start_x" value="-15.0"/>
     <arg name="start_y" value="15.0"/>
@@ -22,6 +24,8 @@
 
         <param name="dt" value="$(arg dt)" />
         <param name="num_opt_points" value="$(arg num_opt_points)" />
+        <param name="save_log" value="$(arg save_log)" />
+        <param name="flat_height" value="$(arg flat_height)" />
 
         <param name="start_x" value="$(arg start_x)" />
         <param name="start_y" value="$(arg start_y)" />

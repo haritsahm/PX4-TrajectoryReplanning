@@ -95,6 +95,7 @@ bool mission_use_wp;
 bool gazebo_sim;
 std::string mission_map;
 bool new_wp_initialized;
+bool save_log, flat_height;
 
 boost::thread queue_thread;
 boost::mutex mutex;
@@ -109,7 +110,7 @@ ros::Subscriber camera_info_sub_, robot_pos_subscriber;
 message_filters::Subscriber<sensor_msgs::Image> depth_image_sub_;
 tf::TransformListener listener;
 image_transport::Subscriber sub_image;
-tf::MessageFilter<sensor_msgs::Image> * tf_filter_;
+//tf::MessageFilter<sensor_msgs::Image> * tf_filter_;
 sensor_msgs::CameraInfo camera_info_msg_;
 visualization_msgs::Marker traj_checker_marker;
 std_msgs::ColorRGBA c_obs, c_free;

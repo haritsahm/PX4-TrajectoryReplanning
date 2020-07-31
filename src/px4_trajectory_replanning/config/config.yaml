@@ -1,12 +1,12 @@
 path_planning:
   resolution: 0.15
   num_opt_points: 7
-  step_size: 0.25
-  rrt_factor: 1.1
-  max_solve_t: 4
-  uav_radius: 0.6
+  step_size: 0.5
+  rrt_factor: 1.15
+  max_solve_t: 6
+  uav_radius: 0.5
   clear_distance: 1.2
-  max_check_dist: 2.5
+  max_check_dist: 1.75
 
 # Lee position controller parameters
 controllers:
@@ -27,9 +27,9 @@ mission:
     middle: [20, -15, 1]
     stop: [0, -30, 1]
   forest:
-    start: [0, 0, 0.8]
-    middle: [15, -15, 0.8]
-    stop: [20, -30, 0.8]
+    start: [0, 0, 0.4]
+    middle: [15, -15, 0.4]
+    stop: [20, -30, 0.5]
   big_forest:
     start: [0, 0, 0.5]
     middle: [35, -35, 0.5]

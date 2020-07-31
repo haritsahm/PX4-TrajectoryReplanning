@@ -415,17 +415,20 @@ void MotionController::followBSpline()
   if (std::abs(d_t[0]) > delta || std::abs(d_t[1]) > delta)
   {
     double yaw = std::atan2(d_t[1], d_t[0]);
-    yaw_from_traj = true;
-
-    targ_yaw = yaw;
-
-    Eigen::Vector3d d_t_e = b_spline_->evaluate(time_elapsed + 2 * eps, 0) - b_spline_->evaluate(time_elapsed + eps, 0);
-
-    if (std::abs(d_t_e[0]) > delta || std::abs(d_t_e[1]) > delta)
+    if(std::fabs(yaw) < (60*M_PI)/180)
     {
-      double yaw_e = std::atan2(d_t_e[1], d_t_e[0]);
-      double yaw_rate = (yaw_e - yaw) / eps;
-      zrate_targ = yaw_rate;
+        yaw_from_traj = true;
+
+        targ_yaw = yaw;
+
+        Eigen::Vector3d d_t_e = b_spline_->evaluate(time_elapsed + 2 * eps, 0) - b_spline_->evaluate(time_elapsed + eps, 0);
+
+        if (std::abs(d_t_e[0]) > delta || std::abs(d_t_e[1]) > delta)
+        {
+            double yaw_e = std::atan2(d_t_e[1], d_t_e[0]);
+            double yaw_rate = (yaw_e - yaw) / eps;
+            zrate_targ = yaw_rate;
+        }
     }
     // else {
     //   command_trajectory.setFromYawRate(0);

@@ -1,20 +1,22 @@
 <launch>
 
     <arg name="mav_name" default="iris"/>
+    <arg name="save_log" default="false"/>
 
     <node pkg="px4_trajectory_replanning" type="px4_mavros_controller_node" name="px4_mavros_controller_node" output="screen" />
     <node pkg="px4_trajectory_replanning" type="px4_position_controller_node" name="px4_position_controller_node" output="screen">
         <rosparam command="load" file="$(find rotors_gazebo)/resource/$(arg mav_name).yaml" />
     </node>
 
-     <node pkg="rosbag" type="record" name="rosbag_record_standard_data" respawn="true" output="screen"
-    args="  -o $(find px4_trajectory_replanning)/bags/ 
-            /tf /mavros/state /joint_states /mavros/altitude
-            /mavros/setpoint_raw/attitude /ring_buffer/occupied
-            -e  '/mavros/local_position/(.*)'
-                '/mavros/imu/(.*)'
-                '/reference/(.*)'
-                '/trajectory/(.*)' "/>
-
+    <group if="$(arg save_log)">
+        <node pkg="rosbag" type="record" name="rosbag_record_standard_data" respawn="true" output="screen"
+        args="  -o $(find px4_trajectory_replanning)/bags/
+                /tf /mavros/state /joint_states /mavros/altitude
+                /mavros/setpoint_raw/attitude /ring_buffer/occupied
+                -e  '/mavros/local_position/(.*)'
+                    '/mavros/imu/(.*)'
+                    '/reference/(.*)'
+                    '/trajectory/(.*)' "/>
+    </group>
 
 </launch>

@@ -62,6 +62,13 @@ void TrajectoryController::init()
 
   image_transport::ImageTransport it(nh_);
   sub_image = it.subscribe("/camera/depth/image_raw", 100, &TrajectoryController::depthImageCallback, this);
+
+//  message_filters::Subscriber<sensor_msgs::Image> depth_image_sub_;
+//  depth_image_sub_.subscribe(nh_, "camera/depth/image_raw", 100);
+
+//  tf::MessageFilter<sensor_msgs::Image> tf_filter_(depth_image_sub_, *listener, "map", 100);
+//  tf_filter_.registerCallback(&TrajectoryController::depthImageCallback, this);
+
   camera_info_sub_ = nh_.subscribe("/camera/depth/camera_info", 50, &TrajectoryController::cameraInfoCallback, this);
   robot_pos_subscriber = nh_.subscribe("/mavros/local_position/odom",10, &TrajectoryController::OdometryCallback, this);
 
@@ -72,6 +79,8 @@ void TrajectoryController::init()
   pnh.param("mission_type", mission_map, map_default);
   pnh.param("use_wp", mission_use_wp, true);
   pnh.param("gazebo_sim", gazebo_sim, true);
+  pnh.param("save_log", save_log, false);
+  pnh.param("flat_height", flat_height, true);
 
   traj_checker_marker.lifetime = ros::Duration(0);
 
@@ -231,15 +240,15 @@ void TrajectoryController::depthImageCallback(const sensor_msgs::Image::ConstPtr
     return;
   }
 
-  double fx = 554.254;
-  double fy = 554.254;
+  double fx = 554.254691191187;
+  double fy = 554.254691191187;
   double cx = 320.5;
   double cy = 240.5;
 
   tf::StampedTransform transform;
   try
   {
-    listener.lookupTransform("map", msg->header.frame_id, ros::Time(0), transform);
+    listener.lookupTransform("map", msg->header.frame_id, msg->header.stamp, transform);
   }
   catch (tf::TransformException& ex)
   {
@@ -365,14 +374,14 @@ void TrajectoryController::missionWaypoint()
   }
 
   path_planner->setPolynomialTrajectory(traj);
-  path_planner->setLogPath(log_path+file_name, false); //save log
+  path_planner->setLogPath(log_path+file_name, save_log); //save log
 
   for (int i = 0; i < 7; i++)
   {
     path_planner->addControlPoint(start);
   }
 
-  path_planner->setHeight(start, true);
+  path_planner->setHeight(start, flat_height);
 
   geometry_msgs::Point p;
   p.x = start.x();
