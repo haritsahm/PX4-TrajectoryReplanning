@@ -1,21 +1,16 @@
 # Trajectory Replanning Using RRT* and Circular Buffer
 
-This repo is for exploring PX4 SITL & HITL Mode and UAV trajectory replanning using RRT*. Please see the original version [
-Ewok: Real-Time Trajectory Replanning for MAVs using Uniform B-splines and 3D Circular Buffer
-](https://github.com/VladyslavUsenko/ewok)
+This repo is for exploring PX4 SITL & HITL Mode and UAV trajectory replanning using RRT* in [Ewok-Replanning RRT*](https://github.com/haritsahm/ewok-replanning-rrt)
 
 ---
-
-# THIS IS AN EXPERIMENT ( DO IT AT YOUR OWN RISK)
-
 
 ## 1. Download Repository and all of its submodules
 
 Pull all of the repo and its submodule using 
 ```bash=
-git clone --branch melodic-dev --recurse-submodules https://github.com/haritsahm/rgbd_local_map.git
+git clone --branch melodic-dev --recurse-submodules https://github.com/haritsahm/PX4-TrajectoryReplanning.git
 ```
-check if these folder is inside src: **ewok**, **mavros_controllers**, **px4**, **realsense-ros**, and **px4_trajectory_replanning**
+check if these folder is inside src: **ewok**, **mavros_controllers**, **px4**, and **px4_trajectory_replanning**, **px4_simulation**
 
 After that run this command to download the submodules
 ```bash=
@@ -79,9 +74,42 @@ Please run this everytime you want to connect it with offboard controller or aft
 ```bash=
 roslaunch px4_trajectory_replanning px4_gazebo_cones.launch 
 ```
+#### 2. Run Rviz 
+```bash=
+roslaunch px4_trajectory_replanning px4_rviz.launch 
+```
 
-#### 2. Run the Offboard Controller
+#### 3. Run the Offboard Controller
 This is the main offboard controller
 ```
 roslaunch px4_trajectory_replanning px4_offboard_controller.launch 
 ```
+
+#### 4. Run the Offboard Interface
+```bash
+roslaunch px4_trajectory_replanning px4_offboard_interface.launch 
+```
+
+![](https://i.imgur.com/VYNEfFt.png)
+
+Wait for a few seconds until the mode status is filled. 
+* Press the offboard button to change the pixhawk mode to offboard control
+* wait for 3 seconds and then send any desired tasks
+* Do not start the mission instruction before the replanning system is running
+#### 5. Run the Replanning System
+```bash
+roslaunch px4_trajectory_replanning trajectory_replanning_rrt.launch 
+```
+##License
+
+This project is licensed under the GNU Lesser General Public License Version 3 (LGPLv3). 
+The interface was developed using Qt Designer and Qt Creator. They are licensed under GNU General Public License Version 3 (GPLv3). 
+The interface is using Qt Core, Qt Gui, and Qt Widgets Framework APIs licensed udner the GNU Lesser General Public License Version 3 (LGPLv3).
+Ewok is licensed under the GNU Lesser General Public License Version 3 (LGPLv3). 
+Pixhawk Firmware and Middleware is licensed under BSD-3-Clause License.
+For full license details, refer to the license file in the library's directory.
+
+
+
+
+
